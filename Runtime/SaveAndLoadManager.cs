@@ -4,7 +4,6 @@ using Assets._Project.Scripts.SaveAndLoad.SaveHandlerBases;
 using Assets._Project.Scripts.UtilScripts;
 using Assets._Project.Scripts.UtilScripts.CodeGen;
 using Assets._Project.Scripts.UtilScripts.Extensions;
-using Eflatun.SceneReference;
 using Newtonsoft.Json;
 using System;
 using System.Collections;
@@ -19,15 +18,9 @@ using UnityEngine;
 using UnityEngine.SceneManagement;
 using Object = UnityEngine.Object;
 using Theblueway.SaveAndLoad.Packages.com.theblueway.saveandload.Runtime;
-using ObjectFactory = Theblueway.SaveAndLoad.Packages.com.theblueway.saveandload.Runtime.ObjectFactory;
 using static Assets._Project.Scripts.SaveAndLoad.SaveAndLoadManager;
-using Theblueway.Core.Runtime.Packages.com.blueutils.core.Runtime.Debugging.Logging;
-using System.Runtime.CompilerServices;
-
-
-
-
-
+using Theblueway.Core.Runtime;
+using ObjectFactory = Theblueway.Core.Runtime.ObjectFactory;
 
 
 
@@ -1118,22 +1111,24 @@ namespace Assets._Project.Scripts.SaveAndLoad
 
                     var baseType = converter.GetType().BaseType;
 
-                    if (!baseType.IsGenericType || baseType.GetGenericTypeDefinition() != typeof(JsonConverter<>))
+                    if ((baseType.IsGenericType && baseType.GetGenericTypeDefinition() == typeof(JsonConverter<>)))
                     {
-                        if (converter.GetType().Assembly.GetName().Name == typeof(JsonConverter).Assembly.GetName().Name)
-                        {
-                            continue;
-                        }
-                        Debug.LogWarning("There is a json converter that does not directly inherits from JsonConverter<>. " +
-                            $"Type: {converter.GetType().CleanAssemblyQualifiedName()}. " +
-                            "It may not be a problem." +
-                            "This is just notice to know about.");
-                        continue;
+                        var typeConverted = baseType.GetGenericArguments()[0];
+
+                        hasJsonConverter.Add(typeConverted);
                     }
+                    else
+                    {
+                        if (baseType != typeof(JsonConverter) 
+                            && converter.GetType().Assembly.GetName().Name != typeof(JsonConverter).Assembly.GetName().Name)
+                        {
 
-                    var typeConverted = baseType.GetGenericArguments()[0];
-
-                    hasJsonConverter.Add(typeConverted);
+                            Debug.LogWarning("There is a json converter that does not directly inherits from JsonConverter<> or from JsonConverter. " +
+                                $"Type: {converter.GetType().CleanAssemblyQualifiedName()}. " +
+                                "It may not be a problem." +
+                                "This is just a notice to know about.");
+                        }
+                    }
                 }
 
                 __serializeableTypes = hasJsonConverter;
@@ -1402,6 +1397,7 @@ namespace Assets._Project.Scripts.SaveAndLoad
 
 
 
+
             public bool HasSerializer_Editor(Type type)
             {
                 if (__serializeableTypes == null) CollectSerilaizeableTypes();
@@ -1448,6 +1444,37 @@ namespace Assets._Project.Scripts.SaveAndLoad
 
 
 
+
+
+            public Type GetSaveHandlerTypeFrom(Type objectType, bool isStatic)
+            {
+                if (isStatic)
+                {
+                    if (_coreServiceInstance.__staticSaveHandlerAttributesByHandledType.TryGetValue(objectType, out var attr2))
+                    {
+                        return attr2.HandlerType;
+                    }
+                    else
+                    {
+                        return null;
+                    }
+                }
+                else
+                {
+                    if (_coreServiceInstance.__saveHandlerAttributesByHandledType.TryGetValue(objectType, out var attr))
+                    {
+                        return attr.HandlerType;
+                    }
+                    else if (_coreServiceInstance.__customSaveDataAttributesByHandledType.TryGetValue(objectType, out var customSaveDataAttribute))
+                    {
+                        return customSaveDataAttribute.SaveHandlerType;
+                    }
+                    else
+                    {
+                        return null;
+                    }
+                }
+            }
 
 
             public Type GetSaveHandlerTypeFrom(Type objectType)
@@ -1625,7 +1652,7 @@ namespace Assets._Project.Scripts.SaveAndLoad
                     }
                     else
                     {
-                        return -1;
+                        return default;
                     }
                 }
 
@@ -1635,7 +1662,7 @@ namespace Assets._Project.Scripts.SaveAndLoad
                 }
                 else
                 {
-                    return -1;
+                    return default;
                 }
             }
 
@@ -2480,7 +2507,7 @@ namespace Assets._Project.Scripts.SaveAndLoad
 
         public void Save()
         {
-            if(_saveingIsInProgress)
+            if (_saveingIsInProgress)
             {
                 Debug.LogError("A save process is already in progress. Returning.");
                 return;
@@ -3645,11 +3672,13 @@ namespace Assets._Project.Scripts.SaveAndLoad
             Dictionary<RandomId, object> prefabPartsByPrefabPartId = new();
             Dictionary<RandomId, List<object>> arrayElementsByArrayMemberId = new();
 
+
+            //flatten out the list of lists
             foreach (var result in results)
             {
-                foreach (var idPair in result.membersById)
+                foreach (var (id, member) in result.membersById)
                 {
-                    prefabPartsByPrefabPartId.Add(idPair.Key, idPair.Value);
+                    prefabPartsByPrefabPartId.Add(id, member);
                 }
                 foreach (var arrayPair in result.arrayElementMembersByArrayMemberId)
                 {

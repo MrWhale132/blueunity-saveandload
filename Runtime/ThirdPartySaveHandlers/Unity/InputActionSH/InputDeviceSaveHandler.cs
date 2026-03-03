@@ -43,7 +43,6 @@ namespace Theblueway.Saveandload.Runtime.ThirdPartySaveHandlers.Unity.InputActio
         public override void Init(object instance)
         {
             base.Init(instance);
-
             __saveData.name = __instance.name;
             __saveData.layout = __instance.layout;
             __saveData.deviceId = __instance.deviceId;

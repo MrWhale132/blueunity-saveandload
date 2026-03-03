@@ -15,12 +15,10 @@ namespace Assets._Project.Scripts.Infrastructure
         {
             base.OnInspectorGUI();
 
-            GOInfra infra = (GOInfra)target;
-
             bool didChange = false;
 
 
-            bool CheckInlinedDescription(InlinedObjectDescription description)
+            static bool CheckInlinedDescription(GOInfra infra, InlinedObjectDescription description)
             {
                 if (description._collectSelfAndChildGameObjectsAndComponents)
                 {
@@ -42,18 +40,24 @@ namespace Assets._Project.Scripts.Infrastructure
             }
 
 
-            if (infra.HasInlinedPrefabParts)
+            foreach (var obj in targets)
             {
-                var description = infra.InlinedPrefabDescription;
+                GOInfra infra = obj as GOInfra;
+                if (infra.HasInlinedPrefabParts)
+                {
+                    var description = infra.InlinedPrefabDescription;
 
-                didChange = CheckInlinedDescription(description);
-            }
+                    didChange = CheckInlinedDescription(infra,description);
+                    if (didChange) SetDirty(infra);
+                }
 
-            if (infra.HasInlinedSceneParts)
-            {
-                var description = infra.InlinedScenePlacedDescription;
+                if (infra.HasInlinedSceneParts)
+                {
+                    var description = infra.InlinedScenePlacedDescription;
 
-                didChange = CheckInlinedDescription(description);
+                    didChange = CheckInlinedDescription(infra, description);
+                    if (didChange) SetDirty(infra);
+                }
             }
 
 
@@ -61,8 +65,13 @@ namespace Assets._Project.Scripts.Infrastructure
 
             if (GUILayout.Button("Refresh Asset References"))
             {
-                infra.RefreshReferencedAssets();
-                didChange = true;
+                foreach (var obj in targets)
+                {
+                    GOInfra infra = obj as GOInfra;
+                    infra.RefreshReferencedAssets();
+
+                    SetDirty(infra);
+                }
             }
 
             //else if (GUILayout.Button("Add infra to all child"))
@@ -73,8 +82,12 @@ namespace Assets._Project.Scripts.Infrastructure
 
             else if (GUILayout.Button("RemoveInfraFromAllChildren"))
             {
-                infra.RemoveInfraFromAllChildren();
-                didChange = true;
+                foreach (var obj in targets)
+                {
+                    GOInfra infra = obj as GOInfra;
+                    infra.RemoveInfraFromAllChildren();
+                    SetDirty(infra);
+                }
             }
 
             //note: feature is not fully developed
@@ -83,17 +96,17 @@ namespace Assets._Project.Scripts.Infrastructure
             //    myTarget.CacheComponentsInChildrenAndSelf();
             //}
 
-            if (didChange)
+
+            void SetDirty(Object obj)
             {
-                EditorUtility.SetDirty(infra); // Mark component as dirty
-                EditorUtility.SetDirty(infra.gameObject); // Mark component as dirty
-                PrefabUtility.RecordPrefabInstancePropertyModifications(infra); // For prefab instance
+                EditorUtility.SetDirty(obj);
+                PrefabUtility.RecordPrefabInstancePropertyModifications(obj);
             }
         }
 
 
 
-        public void PopulateInlinedDescription(GOInfra infra, InlinedObjectDescription description)
+        public static void PopulateInlinedDescription(GOInfra infra, InlinedObjectDescription description)
         {
             HashSet<Object> ignoredMembers = description.memberExclusionSettings.excludedMembers.ToHashSet();
 
@@ -138,7 +151,7 @@ namespace Assets._Project.Scripts.Infrastructure
 
 
 
-        public void ApplyMemberExclusion(GOInfra infra, InlinedObjectDescription description)
+        public static void ApplyMemberExclusion(GOInfra infra, InlinedObjectDescription description)
         {
 
             HashSet<Object> alreadyExcludedMembers = description.memberExclusionSettings.excludedMembers.ToHashSet();

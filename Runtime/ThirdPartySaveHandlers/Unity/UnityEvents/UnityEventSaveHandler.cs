@@ -22,7 +22,8 @@ namespace Assets._Project.Scripts.SaveAndLoad.ThirdPartySaveHandlers.Unity.Unity
 
             if(__instance.GetPersistentEventCount() > 0)
             {
-                Debug.LogError("UnityEventSaveHandler does not support persistent listeners. They will NOT be saved.");
+                Debug.LogError("UnityEventSaveHandler does not support persistent listeners. They will NOT be saved. " +
+                    $"ObjectId: {HandledObjectId}");
             }
 
             IEnumerable<(MethodInfo, object)> methodsAndTargets = CodeGenUtils.GetRuntimeDelegatesFromUnityEvent(__instance, _typeArgs);

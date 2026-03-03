@@ -6,6 +6,7 @@ using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
+using Theblueway.Core.Runtime;
 using Theblueway.SaveAndLoad.Packages.com.theblueway.saveandload.Runtime;
 using UnityEngine;
 
@@ -516,14 +517,6 @@ namespace Assets._Project.Scripts.SaveAndLoad
 
 
 
-
-
-
-
-
-
-
-
         public override Data<T> ReadJson(
             JsonReader reader,
             Type objectType,
@@ -701,6 +694,52 @@ namespace Assets._Project.Scripts.SaveAndLoad
 
 
 
+
+
+    //this is how I quickly solved to stop newtonsoft from picking up my generic converter that never meant to be used by it self
+    public abstract class MyJsonConverter
+    {
+        public abstract void WriteJson(JsonWriter writer, object value, JsonSerializer serializer);
+        public abstract object ReadJson(
+            JsonReader reader,
+            Type objectType,
+            object existingValue,
+            bool hasExistingValue,
+            JsonSerializer serializer);
+    }
+    public abstract class MyJsonConverter<T> : MyJsonConverter
+    {
+        public override void WriteJson(JsonWriter writer, object value, JsonSerializer serializer)
+        {
+            var val = (T)value;
+            WriteJson(writer, val, serializer);
+        }
+        public override object ReadJson(
+            JsonReader reader,
+            Type objectType,
+            object existingValue,
+            bool hasExistingValue,
+            JsonSerializer serializer)
+        {
+            var existingVal = hasExistingValue ? (T)existingValue : default;
+            return ReadJson(reader, objectType, existingVal, hasExistingValue, serializer);
+        }
+
+        public abstract void WriteJson(JsonWriter writer, T value, JsonSerializer serializer);
+        public abstract T ReadJson(
+            JsonReader reader,
+            Type objectType,
+            T existingValue,
+            bool hasExistingValue,
+            JsonSerializer serializer);
+    }
+
+
+
+
+
+
+    //dont delete this, its collected via reflection on bootstrap
     [JsonConverter(typeof(DataJsonConverterFactory))]
     public sealed class DataJsonConverterFactory : JsonConverter
     {
@@ -747,51 +786,4 @@ namespace Assets._Project.Scripts.SaveAndLoad
             return converter.ReadJson(reader, objectType, existingValue, false, serializer);
         }
     }
-
-
-
-
-
-
-    //this is how I quickly solved to stop newtonsoft from picking up my generic converter that never meant to be used by it self
-    public abstract class MyJsonConverter
-    {
-        public abstract void WriteJson(JsonWriter writer, object value, JsonSerializer serializer);
-        public abstract object ReadJson(
-            JsonReader reader,
-            Type objectType,
-            object existingValue,
-            bool hasExistingValue,
-            JsonSerializer serializer);
-    }
-    public abstract class MyJsonConverter<T> : MyJsonConverter
-    {
-        public override void WriteJson(JsonWriter writer, object value, JsonSerializer serializer)
-        {
-            var val = (T)value;
-            WriteJson(writer, val, serializer);
-        }
-        public override object ReadJson(
-            JsonReader reader,
-            Type objectType,
-            object existingValue,
-            bool hasExistingValue,
-            JsonSerializer serializer)
-        {
-            var existingVal = hasExistingValue ? (T)existingValue : default;
-            return ReadJson(reader, objectType, existingVal, hasExistingValue, serializer);
-        }
-
-        public abstract void WriteJson(JsonWriter writer, T value, JsonSerializer serializer);
-        public abstract T ReadJson(
-            JsonReader reader,
-            Type objectType,
-            T existingValue,
-            bool hasExistingValue,
-            JsonSerializer serializer);
-    }
-
-
-
-
 }

@@ -44,7 +44,6 @@ namespace Assets._Project.Scripts.Infrastructure
         public bool TurnedOff;
 
 
-
 #if UNITY_EDITOR
         public bool _IsPrefabasset;
         [ReadOnly]
@@ -249,6 +248,7 @@ namespace Assets._Project.Scripts.Infrastructure
                             $"Going to ignore it and continue on.");
                         continue;
                     }
+                    
 
                     if (Infra.S.IsNotRegistered(memberDesc.member))
                     {
@@ -282,15 +282,9 @@ namespace Assets._Project.Scripts.Infrastructure
 
             foreach (var child in childrenAndSelf)
             {
-                _allInfras.Add(child);
-
                 if (child.DescribePrefab(out var result))
                 {
                     results.Add(result);
-                }
-                if (results.Count == 2)
-                {
-                    Debug.Log(gameObject.HierarchyPath());
                 }
             }
 

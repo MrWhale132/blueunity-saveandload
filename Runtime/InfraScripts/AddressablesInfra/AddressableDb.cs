@@ -893,7 +893,8 @@ namespace Assets._Project.Scripts.Infrastructure.AddressableInfra
             }
             else
             {
-                BlueDebug.Debug($"AddressableDb: no entry for unityId: {unityId}");
+                BlueDebug.Debug($"AddressableDb: no entry for unityId: {unityId}.\n" +
+                    $"name: {asset.name}",asset);
                 return null;
             }
         }
@@ -1034,7 +1035,7 @@ namespace Assets._Project.Scripts.Infrastructure.AddressableInfra
         //[ReadOnly]
         public int __patchVersion;
 
-        public string _savePathRelativeToAssetsFolder;
+        public string _dbVersionsPathRelativeToAssetsFolder;
         public string _saveNameBase;
 
 
@@ -1069,7 +1070,7 @@ namespace Assets._Project.Scripts.Infrastructure.AddressableInfra
             string json = JsonConvert.SerializeObject(data, Formatting.Indented);
 
 
-            string dirPath = Path.Combine(Application.dataPath, _savePathRelativeToAssetsFolder);
+            string dirPath = Path.Combine(Application.dataPath, _dbVersionsPathRelativeToAssetsFolder);
 
             string fileName = $"{_saveNameBase}_{version}.json";
 

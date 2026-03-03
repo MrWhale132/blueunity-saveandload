@@ -14,9 +14,9 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   config:
     _triggerValidate: 0
-    handlerIdOfConfiguredType: 455102278940854590
+    handlerIdOfConfiguredType: 823764476349432401
     _configuredTypeState: 2
-    _lastKnownHandlerIdOfConfiguredType: 455102278940854590
+    _lastKnownHandlerIdOfConfiguredType: 823764476349432401
     _lastKnownTypeNameOfConfiguredType: UnityEngine.AudioSource, UnityEngine.AudioModule
     _wasStatic: 1
     _loadOrder: 0
@@ -24,5 +24,5 @@ MonoBehaviour:
     - memberName: GamepadSpeakerSupportsOutputType
       inclusionMode: 0
       directive: UNITY_EDITOR
-      methodId: 253884542659336515
+      methodId: 699925747416727619
     logContext: {fileID: 11400000}

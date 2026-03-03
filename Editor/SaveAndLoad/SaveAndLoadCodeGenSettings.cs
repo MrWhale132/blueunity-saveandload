@@ -7,13 +7,14 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
+using Theblueway.Core.Runtime.Packages.com.blueutils.core.Runtime.ScriptResources;
 using UnityEditor;
 using UnityEngine;
 
 [CreateAssetMenu(fileName = "SaveAndLoadCodeGenSettings", menuName = "Scriptable Objects/SaveAndLoad/SaveAndLoadCodeGenSettings")]
 public class SaveAndLoadCodeGenSettings : ScriptableObject
 {
-    [Tooltip("Use this to finalize and set changes.")]
+    [Tooltip("Use this to finalize and set changes. "+StringResources.ActsLikeAButton)]
     public bool _triggerSet;
 
     private void OnValidate()
@@ -80,10 +81,6 @@ public class SaveAndLoadCodeGenSettings : ScriptableObject
     [HideInInspector]
     public ExclusionSettings TypeExclusionSettings;
 
-    public string InactiveSaveHandlersFolder;
-
-    public bool DoNotGenerateFilesAtTheEnd;
-
     public bool IgnoreAnyObsolete;
 
     [Tooltip("Only for types you have access to.")]
@@ -102,13 +99,13 @@ public class SaveAndLoadCodeGenSettings : ScriptableObject
 [Serializable]
 public class TypeDiscoverySettings
 {
-    public bool IgnoreAllDependencyTypes_TargetTypeOnly;
+    public bool IgnoreAllDependencyTypes;
 
-    public bool IgnoreGenericTypeArguments => IgnoreAllDependencyTypes_TargetTypeOnly;
-    public bool IgnoreGenericTypeConstraints => IgnoreAllDependencyTypes_TargetTypeOnly;
-    public bool IgnoreImplementOrInherit => IgnoreAllDependencyTypes_TargetTypeOnly;
-    public bool IgnoreDirectDependencies => IgnoreAllDependencyTypes_TargetTypeOnly;
-    public bool IgnoreBaseType => IgnoreAllDependencyTypes_TargetTypeOnly;
+    public bool IgnoreGenericTypeArguments => IgnoreAllDependencyTypes;
+    public bool IgnoreGenericTypeConstraints => IgnoreAllDependencyTypes;
+    public bool IgnoreImplementOrInherit => IgnoreAllDependencyTypes;
+    public bool IgnoreDirectDependencies => IgnoreAllDependencyTypes;
+    public bool IgnoreBaseType => IgnoreAllDependencyTypes;
 }
 
 

@@ -8,7 +8,6 @@
         "com.blueutils.core": "1.1.0",
         "com.blueutils.codegen": "1.1.0",
         "com.blueutils.addressables": "1.1.0",
-        "com.blueutils.newtonsoft": "1.1.0",
 		"com.eflatun.scenereference": "https://github.com/starikcetin/Eflatun.SceneReference.git#4.1.1"
     }
 }

@@ -4,7 +4,6 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEditor;
-using UnityEngine.Analytics;
 
 namespace Packages.com.theblueway.saveandload.Editor.SaveAndLoad
 {
@@ -20,10 +19,7 @@ namespace Packages.com.theblueway.saveandload.Editor.SaveAndLoad
             BuildLookupIfNeeded();
 
             var handlerId = SaveAndLoadManager.Service.GetHandlerIdByHandledType(handledType, isStatic);
-            if(handledType.Name == "TankInputUser")
-            {
 
-            }
             if (!_typeGenerationSettingsByHandlerId.ContainsKey(handlerId))
             {
                 if (isStatic)
@@ -77,40 +73,13 @@ namespace Packages.com.theblueway.saveandload.Editor.SaveAndLoad
             _foundTypeGenConfigsByHandlerId.Clear();
             _typeGenerationSettingsByHandlerId.Clear();
 
-            var type2 = typeof(SaveHandlerTypeGenerationConfigSO);
 
-            var typeGenConfigSOs = AssetDatabase.FindAssets("t:" + type2.Name)
-                .Select(AssetDatabase.GUIDToAssetPath)
-                .Select(path => AssetDatabase.LoadAssetAtPath<SaveHandlerTypeGenerationConfigSO>(path))
-                .Where(asset => asset != null);
+            var typeGenConfigSOs = GatherAllScriptableConfigs();
 
             var byHandlerId = typeGenConfigSOs
                 .GroupBy(so => so.config.handlerIdOfConfiguredType)
                 .ToDictionary(g => g.Key, g => g.ToList());
 
-
-
-            //foreach((var handlerId, var configs) in byHandlerId)
-            //{
-            //    Type handledType = SaveAndLoadManager.Service_.GetHandledTypeByHandlerId(handlerId, out bool isStatic);
-
-            //    if (isStatic) continue;
-
-
-            //    Type baseType = handledType.BaseType;
-
-            //    while (baseType != null)
-            //    {
-            //        var idOfBaseType = SaveAndLoadManager.Service_.GetHandlerIdByHandledType(baseType,isStatic:false);
-
-            //        if (byHandlerId.TryGetValue(idOfBaseType, out var baseConfigs))
-            //        {
-            //            byHandlerId[handlerId].AddRange(baseConfigs);
-            //        }
-
-            //        baseType = baseType.BaseType;
-            //    }
-            //}
 
 
             foreach ((var id, var configs) in byHandlerId)
@@ -132,6 +101,23 @@ namespace Packages.com.theblueway.saveandload.Editor.SaveAndLoad
             }
 
             _isBuilt = true;
+        }
+
+
+        public void CacheInvalidate()
+        {
+            _isBuilt = false;
+            _foundTypeGenConfigsByHandlerId.Clear();
+            _typeGenerationSettingsByHandlerId.Clear();
+        }
+
+
+        public IEnumerable<SaveHandlerTypeGenerationConfigSO> GatherAllScriptableConfigs()
+        {
+            return AssetDatabase.FindAssets("t:" + nameof(SaveHandlerTypeGenerationConfigSO))
+                .Select(AssetDatabase.GUIDToAssetPath)
+                .Select(path => AssetDatabase.LoadAssetAtPath<SaveHandlerTypeGenerationConfigSO>(path))
+                .Where(asset => asset != null);
         }
     }
 }

@@ -14,9 +14,9 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   config:
     _triggerValidate: 0
-    handlerIdOfConfiguredType: 188316795183845748
+    handlerIdOfConfiguredType: 356842094585293352
     _configuredTypeState: 2
-    _lastKnownHandlerIdOfConfiguredType: 188316795183845748
+    _lastKnownHandlerIdOfConfiguredType: 356842094585293352
     _lastKnownTypeNameOfConfiguredType: UnityEngine.RectTransform, UnityEngine.CoreModule
     _wasStatic: 1
     _loadOrder: 0

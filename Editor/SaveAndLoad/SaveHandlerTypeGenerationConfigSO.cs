@@ -53,6 +53,7 @@ namespace Packages.com.theblueway.saveandload.Editor.SaveAndLoad
         public bool _triggerValidate;
 
         [HandledTypeSaveHandlerId]
+        [Tooltip("Click the value area to select an existing savehandler to configure")]
         public long handlerIdOfConfiguredType;
 
         [ReadOnly]
@@ -83,13 +84,24 @@ namespace Packages.com.theblueway.saveandload.Editor.SaveAndLoad
 
 
 
-        public void DetermineState(out bool isValid, bool logErrorMessages = false, UnityEngine.Object context = null)
+        public void DetermineState(out bool isValid, int recursionDepth, bool logErrorMessages = false, UnityEngine.Object context = null)
         {
-            Type configuredType = SaveAndLoadManager.Service.GetHandledTypeByHandlerId(handlerIdOfConfiguredType,log:false, out var isStatic);
+            recursionDepth++;
+
+            if (recursionDepth > 10)
+            {
+                Debug.LogError($"SaveHandlerTypeGenerationConfig: Recursion depth exceeded while determining state for type with handler id {handlerIdOfConfiguredType}. This likely means there is an infinite loop in the logic. This is surely a bug.", context);
+                isValid = false;
+                return;
+            }
+
+
+            Type configuredType = SaveAndLoadManager.Service.GetHandledTypeByHandlerId(handlerIdOfConfiguredType, log: false, out var isStatic);
 
             bool typeWasFound = configuredType != null;
 
-            _wasStatic = isStatic;
+            if (typeWasFound)
+                _wasStatic = isStatic;
 
 
             if (_configuredTypeState is ConfiguredTypeState.None)
@@ -119,13 +131,14 @@ namespace Packages.com.theblueway.saveandload.Editor.SaveAndLoad
                     {
                         _configuredTypeState = ConfiguredTypeState.Assigned;
                         handlerIdOfConfiguredType = id;
-                        DetermineState(out isValid, logErrorMessages, context);
+                        DetermineState(out isValid, recursionDepth, logErrorMessages, context);
                         return;
                     }
                     else
                     {
                         string isStatic2 = _wasStatic ? "(static)" : "";
-                        Debug.LogWarning($"SaveHandlerTypeGenerationConfig: Resolved type {isStatic2} '{type.CleanAssemblyQualifiedName()}' does not have a savehandler id associated.", context);
+                        if (logErrorMessages)
+                            Debug.LogWarning($"SaveHandlerTypeGenerationConfig: Resolved type {isStatic2} '{type.CleanAssemblyQualifiedName()}' does not have a savehandler id associated.", context);
                         isValid = false;
                         return;
                     }
@@ -140,7 +153,8 @@ namespace Packages.com.theblueway.saveandload.Editor.SaveAndLoad
 
             if (_configuredTypeState is ConfiguredTypeState.Unassigned)
             {
-                Debug.LogWarning($"SaveHandlerTypeGenerationConfig: Configured type is unassigned. Please select one", context);
+                if (logErrorMessages)
+                    Debug.LogWarning($"SaveHandlerTypeGenerationConfig: Configured type is unassigned. Please select one", context);
                 isValid = false;
                 return;
             }
@@ -149,7 +163,7 @@ namespace Packages.com.theblueway.saveandload.Editor.SaveAndLoad
                 if (!typeWasFound)
                 {
                     _configuredTypeState = ConfiguredTypeState.LostTracking;
-                    DetermineState(out isValid, logErrorMessages, context);
+                    DetermineState(out isValid, recursionDepth, logErrorMessages, context);
                     return;
                 }
                 else
@@ -161,24 +175,26 @@ namespace Packages.com.theblueway.saveandload.Editor.SaveAndLoad
                 }
             }
 
-            //if (_configuredTypeState is ConfiguredTypeState.LostTracking)
-            //{
-            //    Debug.LogWarning($"SaveHandlerTypeGenerationConfig: Configured type with handler ID {handlerIdOfConfiguredType} could not be found. It may have been removed.", context);
-            //    isValid = false;
-            //    return;
-            //}
-
-
             Debug.LogError("This point should have never reached.", context);
             isValid = false;
         }
 
 
+
+
+        public bool IsValid(out ConfiguredTypeState configState, bool logErrorMessages = false, UnityEngine.Object context = null)
+        {
+            bool isValid = IsValid(logErrorMessages, context);
+            configState = _configuredTypeState;
+
+            return isValid;
+        }
+
         public bool IsValid(bool logErrorMessages = false, UnityEngine.Object context = null)
         {
             bool isValid = true;
 
-            DetermineState(out isValid, logErrorMessages, context);
+            DetermineState(out isValid, recursionDepth: 0, logErrorMessages, context);
 
             if (!isValid) return false;
 

@@ -12,13 +12,15 @@ namespace Assets._Project.Scripts.SaveAndLoad
     //T should only be a struct
     public abstract class CustomSaveData<TStruct> : CustomSaveData ///where T : struct, cant because of <see cref="Data{T}"/>
     {
-        public CustomSaveData()
-        {
+        public RandomId _referencedBy;
+        //todo: temporary solution as the codegenerator used the same read and write member list for classes and structs too,
+        //and when a class type writes into a customsavedata is passes its HandledObjectId.
+        public RandomId HandledObjectId => _referencedBy; 
 
-        }
 
         public abstract void ReadFrom(in TStruct instance);
         public abstract void WriteInto(ref TStruct instance);
+
         public void ReadFrom(TStruct instance)
         {
             ReadFrom(in instance);
@@ -30,6 +32,16 @@ namespace Assets._Project.Scripts.SaveAndLoad
             return instance;
         }
 
+        public void ReadFrom(TStruct instance, RandomId referencedBy)
+        {
+            ReadFrom(in instance, referencedBy);
+        }
+        public void ReadFrom(in TStruct instance, RandomId referencedBy)
+        {
+            _referencedBy = referencedBy;
+            ReadFrom(in instance);
+            _referencedBy = RandomId.Default;
+        }
 
 
         public override void SlowReadFrom<T>(in T instance)
@@ -70,7 +82,8 @@ namespace Assets._Project.Scripts.SaveAndLoad
 
         public RandomId GetObjectId(object obj)
         {
-            return Infra.Singleton.GetObjectId(obj, Infra.GlobalReferencing);
+            //temp solution for backward compatibility
+            return Infra.Singleton.GetObjectId(obj, _referencedBy.IsDefault ? Infra.GlobalReferencing : _referencedBy);
         }
 
         public InvocationList GetInvocationList<T>(T del) where T : Delegate

@@ -6,7 +6,6 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using UnityEngine;
-using Assets._Project.Scripts.SaveAndLoad.ThirdPartySaveHandlers.UnitySHs;
 
 ///reason it is manual: same as <see cref="MeshRendererSaveHandler"/>
 ///todo: implement the same solution as for <see cref="MeshRendererSaveHandler"/>
@@ -186,62 +185,4 @@ namespace Assets._Project.Scripts.SaveAndLoad.ThirdPartySaveHandlers.Unity.Unity
         public RandomId probeAnchor;
         public UnityEngine.HideFlags hideFlags;
     }
-
-
-    public class StaticSkinnedMeshRendererSubtitute : StaticSubtitute
-    {
-        public override Type SubtitutedType => typeof(UnityEngine.SkinnedMeshRenderer);
-    }
-
-    [SaveHandler(453934095520820398, "StaticSkinnedMeshRendererSubtitute", typeof(StaticSkinnedMeshRendererSubtitute), generationMode: SaveHandlerGenerationMode.FullAutomata, staticHandlerOf: typeof(UnityEngine.SkinnedMeshRenderer))]
-    public class StaticSkinnedMeshRendererSaveHandler : StaticSaveHandlerBase<StaticSkinnedMeshRendererSubtitute, StaticSkinnedMeshRendererSaveData>
-    {
-        public override void WriteSaveData()
-        {
-            base.WriteSaveData();
-
-        }
-
-        public override void LoadPhase1()
-        {
-            base.LoadPhase1();
-
-        }
-        static StaticSkinnedMeshRendererSaveHandler()
-        {
-            Dictionary<string, long> methodToId = new()
-            {
-
-            };
-            Infra.Singleton.AddMethodSignatureToMethodIdMap(_typeReference, methodToId);
-            Infra.Singleton.AddMethodIdToMethodMap(_typeReference, _idToMethod);
-            Infra.Singleton.AddMethodIdToMethodInfoMap(_typeReference, _idToMethodInfo);
-        }
-        static Type _typeReference = typeof(UnityEngine.SkinnedMeshRenderer);
-        static Type _typeDefinition = typeof(UnityEngine.SkinnedMeshRenderer);
-        static Type[] _args = _typeReference.IsGenericType ? _typeReference.GetGenericArguments() : null;
-        public static Func<object, Delegate> _idToMethod(long id)
-        {
-            Func<object, Delegate> method = id switch
-            {
-                _ => Infra.Singleton.GetIdToMethodMapForType(_typeReference.BaseType)(id),
-            };
-            return method;
-        }
-        public static MethodInfo _idToMethodInfo(long id)
-        {
-            MethodInfo methodDef = id switch
-            {
-                _ => Infra.Singleton.GetMethodInfoIdToMethodMapForType(_typeReference.BaseType)(id),
-            };
-            return methodDef;
-        }
-    }
-
-
-    public class StaticSkinnedMeshRendererSaveData : StaticSaveDataBase
-    {
-
-    }
-
 }

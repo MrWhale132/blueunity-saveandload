@@ -4,6 +4,8 @@ using Assets._Project.Scripts.SaveAndLoad;
 using Assets._Project.Scripts.SaveAndLoad.SaveHandlerBases;
 using System.Collections.Generic;
 using System.Linq;
+using Theblueway.Core.Runtime;
+using Theblueway.Core.Runtime.Packages.com.blueutils.core.Runtime.ScriptResources;
 using UnityEngine;
 
 namespace Theblueway.SaveAndLoad.Packages.com.theblueway.saveandload.Runtime.InfraScripts
@@ -12,7 +14,13 @@ namespace Theblueway.SaveAndLoad.Packages.com.theblueway.saveandload.Runtime.Inf
     [ExecuteInEditMode]
     public class SceneInfra : MonoBehaviour
     {
-        public List<GOInfra> scenePlacedGOInfras_EditorView = new();
+#if UNITY_EDITOR
+        [Tooltip(StringResources.ActsLikeAButton)]
+        public bool _collectScenePlacedGOInfras;
+#endif
+
+
+        public List<GOInfra> scenePlacedGOInfrasEditorView = new();
         public HashSet<GOInfra> ScenePlacedGOInfras { get; set; } = new();
 
 
@@ -23,7 +31,6 @@ namespace Theblueway.SaveAndLoad.Packages.com.theblueway.saveandload.Runtime.Inf
 
 
 #if UNITY_EDITOR
-        public bool _collectScenePlacedGOInfras;
 
         public void CollectInfras()
         {
@@ -61,7 +68,7 @@ namespace Theblueway.SaveAndLoad.Packages.com.theblueway.saveandload.Runtime.Inf
 
             if (Infra.Singleton == null) return;
 
-            ScenePlacedGOInfras = scenePlacedGOInfras_EditorView.ToHashSet();
+            ScenePlacedGOInfras = scenePlacedGOInfrasEditorView.ToHashSet();
 
             ScenePlacedGOInfras.RemoveWhere(x => x.TurnedOff);
 
@@ -75,7 +82,7 @@ namespace Theblueway.SaveAndLoad.Packages.com.theblueway.saveandload.Runtime.Inf
 
             foreach (var assetRef in assetEntryReferences)
             {
-                if(!assetRef.isValid) continue;
+                if (!assetRef.isValid) continue;
 
                 var initContext = new AssetInitContext { instantiatedFromAssetId = assetRef.assetId };
 
@@ -141,7 +148,7 @@ namespace Theblueway.SaveAndLoad.Packages.com.theblueway.saveandload.Runtime.Inf
 
                 if (didDomainReload)
                 {
-                    ScenePlacedGOInfras = scenePlacedGOInfras_EditorView.ToHashSet();
+                    ScenePlacedGOInfras = scenePlacedGOInfrasEditorView.ToHashSet();
                 }
 
                 return;
@@ -155,8 +162,8 @@ namespace Theblueway.SaveAndLoad.Packages.com.theblueway.saveandload.Runtime.Inf
             {
                 ScenePlacedGOInfras.RemoveWhere(infra => infra == null);
 
-                scenePlacedGOInfras_EditorView.Clear();
-                scenePlacedGOInfras_EditorView.AddRange(ScenePlacedGOInfras);
+                scenePlacedGOInfrasEditorView.Clear();
+                scenePlacedGOInfrasEditorView.AddRange(ScenePlacedGOInfras);
                 return;
             }
         }

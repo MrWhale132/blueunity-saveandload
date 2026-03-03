@@ -72,6 +72,13 @@ namespace Theblueway.SaveAndLoad.Packages.com.theblueway.saveandload.Runtime.Thi
                 __instance = GetObjectById<NavMeshPath>(__saveData._ObjectId_);
             }
         }
+
+
+        public override void ReleaseObject()
+        {
+            SaveableNavMesh._handledPaths.Remove(__instance);
+            base.ReleaseObject();
+        }
     }
 
     public class NavMeshPathSaveData : SaveDataBase

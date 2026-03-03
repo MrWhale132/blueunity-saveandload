@@ -37,7 +37,7 @@ namespace Assets._Project.Scripts.Infrastructure
             if (_resolvedTypeCacheByName.ContainsKey(assemblyQualifiedName))
                 return _resolvedTypeCacheByName[assemblyQualifiedName];
 
-            int assemblyNameIndexFromBackward = assemblyQualifiedName.Count(c => c == '=') +1;
+            //int assemblyNameIndexFromBackward = assemblyQualifiedName.Count(c => c == '=') +1;
 
             //todo: extract all the assembly and type names and map them to their current versions' name
 

@@ -2,7 +2,7 @@
 using Newtonsoft.Json;
 using System;
 using Unity.Mathematics;
-using Assets._Project.Scripts.UtilScripts.Extensions;
+using Theblueway.Core.Runtime;
 using UnityEngine;
 
 

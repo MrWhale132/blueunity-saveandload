@@ -14,10 +14,10 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   config:
     _triggerValidate: 0
-    handlerIdOfConfiguredType: 700375474908909254
+    handlerIdOfConfiguredType: 955885696226906640
     _configuredTypeState: 2
-    _lastKnownHandlerIdOfConfiguredType: 509097009457118126
-    _lastKnownTypeNameOfConfiguredType: UnityEngine.Texture2D, UnityEngine.CoreModule
+    _lastKnownHandlerIdOfConfiguredType: 955885696226906640
+    _lastKnownTypeNameOfConfiguredType: UnityEngine.Renderer, UnityEngine.CoreModule
     _wasStatic: 0
     _loadOrder: 0
     memberConfigs:

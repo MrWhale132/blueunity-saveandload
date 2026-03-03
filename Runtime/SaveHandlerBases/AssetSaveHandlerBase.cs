@@ -53,7 +53,7 @@ namespace Assets._Project.Scripts.SaveAndLoad.SaveHandlerBases
             if (!SupportsInstanceCreation)
                 Debug.LogError((HandledType?.Name, __instance?.name, HandledObjectId, _context == null,
                     "\nThis asset type does not support instance creation, meaning all of its instances is expected to be preregistered with an assetid. " +
-                    "All you have to do is to preresgister this asset somewhen and somewhere. " +
+                    "All you have to do is to preresgister this somewhere in your code. " +
                     "If it is a non-shared private copy of a shared property then also set the option that indicates this. " +
                     "(hint: something like 'expectedToBeModified' or similar meaning)"), __instance);
         }

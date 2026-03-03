@@ -1,3 +1,4 @@
+using Assets._Project.Scripts.Infrastructure;
 using Assets._Project.Scripts.SaveAndLoad;
 using Assets._Project.Scripts.SaveAndLoad.Editor;
 using Assets._Project.Scripts.UtilScripts.CodeGen;
@@ -13,11 +14,13 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Runtime.CompilerServices;
+using Theblueway.Core.Runtime.Packages.com.blueutils.core.Runtime.Debugging.Logging;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.Events;
 using UnityEngine.EventSystems;
+using UnityEngine.Rendering;
 using UnityEngine.SceneManagement;
 using static SaveHandlerAutoGenerator;
 using Debug = UnityEngine.Debug;
@@ -45,6 +48,10 @@ public class SaveAndLoadCodeGenWindow : EditorWindow
 
 
 
+
+
+
+
     private void OnEnable()
     {
         LoadState();
@@ -60,7 +67,6 @@ public class SaveAndLoadCodeGenWindow : EditorWindow
     {
         //Debug.Log("save state");
         _state._eventqueue = _eventQueue.ToList();
-
         _state._scrollPos = _scrollPos;
         _state._changedFiles = _changedFiles;
         _state._selectedIndices = _selectedIndices.ToList();
@@ -140,27 +146,69 @@ public class SaveAndLoadCodeGenWindow : EditorWindow
     }
 
 
-    public class FileSystemEventArgsDtoEqualityComparer : IEqualityComparer<FileSystemEventArgsDto>
+
+
+    public void EnsureTypeGenConfigs(bool forceRegenerate)
     {
-        public bool Equals(FileSystemEventArgsDto x, FileSystemEventArgsDto y)
+        Session session = NewSession();
+
+        var typeGenConfigs = session.TypeGenerationSettingsRegistry.GatherAllScriptableConfigs();
+
+        List<SaveHandlerTypeGenerationConfigSO> lostTrackingConfigs = new();
+
+        foreach (var config in typeGenConfigs)
         {
-            return x.FullPath == y.FullPath && x.ChangeType == y.ChangeType;
+            bool valid = config.config.IsValid(out var configState, logErrorMessages: false, context: config);
+
+            if (!valid && configState == SaveHandlerTypeGenerationConfig.ConfiguredTypeState.LostTracking)
+            {
+                lostTrackingConfigs.Add(config);
+            }
+            else if (forceRegenerate)
+            {
+                lostTrackingConfigs.Add(config);
+            }
         }
 
-        public int GetHashCode(FileSystemEventArgsDto obj)
+
+        List<Type> lostTrackTypes = new();
+
+        foreach (var config in lostTrackingConfigs)
         {
-            return obj.FullPath.GetHashCode() ^ obj.ChangeType.GetHashCode();
+            Type type = VersionedTypeResolver.Resolve(config.config._lastKnownTypeNameOfConfiguredType);
+            lostTrackTypes.Add(type);
         }
+
+        //todo: hack so the registry will have an empty cache, so it does not try to find the configs and validate them
+        //we dont want to validate them yet because they are invalid yet. fix it somewhen...
+        //that is why we run the codegen twice, first, we generate the handler for the type the configs supopsed to configure
+        //then we run the codegen again, this time with valid configs because they supposed to find the type they are configuring.
+
+        session.TypeGenerationSettingsRegistry._isBuilt = true;
+
+        CreateTypeReportsAndRunCodeGen(lostTrackTypes, session);
+
+        session.TypeGenerationSettingsRegistry.CacheInvalidate();
+
+        bool orig = session.UserSettings.ForceGenerateForUnchangedTypesToo;
+
+        session.UserSettings.ForceGenerateForUnchangedTypesToo = true;
+
+        CreateTypeReportsAndRunCodeGen(lostTrackTypes, session);
+
+        session.UserSettings.ForceGenerateForUnchangedTypesToo = orig;
+
     }
 
 
 
 
-    [MenuItem("Window/Save&Load CodeGen")]
+
+    [MenuItem("Window/SaveAndLoad CodeGen")]
     public static void ShowWindow()
     {
         // Creates (or focuses) a new tabbed editor window
-        GetWindow<SaveAndLoadCodeGenWindow>("Save&Load CodeGen");
+        GetWindow<SaveAndLoadCodeGenWindow>("SaveAndLoad CodeGen");
     }
 
     private void OnGUI()
@@ -168,9 +216,28 @@ public class SaveAndLoadCodeGenWindow : EditorWindow
         CodeGenUtils.Config = ToCodeGenConfig(_userSettings);
 
 
-        //
-        //changed files section
-        //
+
+        if (!_state._didSetup)
+        {
+            GUILayout.Space(100);
+
+            GUILayout.BeginHorizontal();
+            GUILayout.FlexibleSpace();
+
+            if (GUILayout.Button("Set Up", GUILayout.Width(100)))
+            {
+                EnsureTypeGenConfigs(forceRegenerate:false);
+
+                _state._didSetup = true;
+            }
+
+            GUILayout.FlexibleSpace();
+            GUILayout.EndHorizontal();
+
+            return;
+        }
+
+
 
         EditorGUILayout.LabelField("Changed Files", EditorStyles.boldLabel);
 
@@ -224,17 +291,6 @@ public class SaveAndLoadCodeGenWindow : EditorWindow
         EditorGUILayout.Space();
 
 
-        //outdated, has to be rethinked and refactored to work
-        //if (GUILayout.Button("Regenerate All Existing SaveHandlers"))
-        //{
-        //    var tasks = CreateCodeGenTasks(_saveAndLoadService.SaveHandlerAttributesByHandledType.Keys);
-
-        //    CreateTypeReportsAndRunCodeGen(tasks);
-        //}
-
-        _userSettings.GenerateExampleSaveHandlersForManuallyHandledTypesToo =
-            GUILayout.Toggle(_userSettings.GenerateExampleSaveHandlersForManuallyHandledTypesToo, "Generate Example SaveHandlers For Manually Handled Types Too");
-
         EditorGUILayout.Space(10);
 
 
@@ -257,6 +313,16 @@ public class SaveAndLoadCodeGenWindow : EditorWindow
             //RemoveSelectedFiles();
         }
 
+
+
+        EditorGUILayout.Space(40);
+
+        _state._forceGenerateHandlersOfTypeGenConfigs = GUILayout.Toggle(_state._forceGenerateHandlersOfTypeGenConfigs,"Force regen handlers of typegen configs");
+
+        if(GUILayout.Button("Ensure typegen configs"))
+        {
+            EnsureTypeGenConfigs(forceRegenerate:_state._forceGenerateHandlersOfTypeGenConfigs);
+        }
 
         EditorGUILayout.EndVertical();
 
@@ -997,7 +1063,7 @@ public class SaveAndLoadCodeGenWindow : EditorWindow
             {
                 Debug.LogWarning("Type discovery is taking unusually long. " +
                     "It might be a bug causing infinite loop or you started the codegen for hundreds or thousands of types. " +
-                    $"{currentIteration} iterations were done of a maximum of {maxIterations}.");
+                    $"{currentIteration} iterations were done of the maximum {maxIterations}.");
             }
             if (currentIteration == maxIterations)
             {
@@ -1213,7 +1279,6 @@ public class SaveAndLoadCodeGenWindow : EditorWindow
             {
                 bool isStatic = binding.HasFlag(BindingFlags.Static);
 
-
                 var fieldsReport = GetFieldInfos(type, binding, session);
 
                 var properties = CodeGenUtils.GetSimpleProperties(type, binding).ToList();
@@ -1283,6 +1348,7 @@ public class SaveAndLoadCodeGenWindow : EditorWindow
             }
 
 
+
             var typeReport = CreateTypeReport(type, binding);
 
 
@@ -1290,12 +1356,20 @@ public class SaveAndLoadCodeGenWindow : EditorWindow
             {
                 binding |= BindingFlags.Instance;
                 binding &= ~BindingFlags.Static;
-
                 var instanceReport = CreateTypeReport(type, binding);
 
                 var staticReport = typeReport;
 
-                if (staticReport.FieldsReport.ValidFields.Count == 0
+
+                bool hasNoTypeGenSettings = !session.TypeGenerationSettingsRegistry.HasSettingsForHandledType(type,isStatic:true, out var _);
+
+
+                //doc:
+                //we dont generate static handler if there is no static member of the handled type to reduce clutter and unnecessary types
+                //however, it is possible that the typegen configs specified for the type exclude all members
+                //there is a reason the user created a config for this type, so we interpet it as an enforcement
+                if (hasNoTypeGenSettings 
+                    && staticReport.FieldsReport.ValidFields.Count == 0
                     && staticReport.Properties.Count() == 0
                     && staticReport.Events.Count() == 0
                     && staticReport.Methods.Length == 0)
@@ -1365,11 +1439,11 @@ public class SaveAndLoadCodeGenWindow : EditorWindow
 
         //Debug.Log("discovery done. found " + discoveredTypes.Count + " types.");
 
-        Debug.Log("Benchmark: Sum Total");
+        BlueDebug.Debug("Benchmark: Sum Total");
         foreach ((var key, var times) in benchmark)
         {
             TimeSpan total = new TimeSpan(times.Sum(t => t.Ticks));
-            Debug.Log($"{key}: {total.TotalMilliseconds} ms over {times.Count} iterations. Avg: {total.TotalMilliseconds / times.Count} ms");
+            BlueDebug.Debug($"{key}: {total.TotalMilliseconds} ms over {times.Count} iterations. Avg: {total.TotalMilliseconds / times.Count} ms");
         }
 
 
@@ -1377,11 +1451,6 @@ public class SaveAndLoadCodeGenWindow : EditorWindow
 
 
 
-
-
-
-
-        if (_userSettings.DoNotGenerateFilesAtTheEnd) return;
 
 
 
@@ -1401,8 +1470,6 @@ public class SaveAndLoadCodeGenWindow : EditorWindow
 
         foreach ((var type, var report) in discoveredTypes)
         {
-            //if (_saveAndLoadService.HasManualSaveHandlerForType_Editor(type)) continue;
-
             var generationResult = codeGenerator.GenerateSaveAndLoadCode(report, session);
             typesAndTheirgenerationResults.Add((type, generationResult));
         }
@@ -1626,7 +1693,7 @@ public class SaveAndLoadCodeGenWindow : EditorWindow
                     }
                     else //insert code at the end of the class
                     {
-                        void UpdateTargetTypesAsmDefFileWithSaveAndLoadReferences()
+                        void UpdateTargetTypesAsmDefFileWithSaveAndLoadPhase1()
                         {
                             if (session.HasAsmDefFile(path, out var asmdefPath))
                             {
@@ -1698,7 +1765,7 @@ public class SaveAndLoadCodeGenWindow : EditorWindow
                             }
                         }
 
-                        UpdateTargetTypesAsmDefFileWithSaveAndLoadReferences();
+                        UpdateTargetTypesAsmDefFileWithSaveAndLoadPhase1();
 
 
                         var combined = CodeGenUtils.InsertNestedTypeIntoTargetType(type, originalSource, generatedTypeText);
@@ -1743,6 +1810,7 @@ public class SaveAndLoadCodeGenWindow : EditorWindow
 
                     bool hasExistingNotManualHandler = handlerTypeToLookFor != null;
                     bool canEditItsSourceFile = hasExistingNotManualHandler && session.HasEditableSourceFile(handlerTypeToLookFor, out path);
+                    //todo: stronger validation for this logic. Examine if the source file contains only the expected handler type
                     bool fileContainsOnlyGeneratedCode = hasExistingNotManualHandler && Path.GetFileName(path) == fileName; //save to override as is
 
                     if (hasExistingNotManualHandler)
@@ -1885,7 +1953,7 @@ public class SaveAndLoadCodeGenWindow : EditorWindow
         }
 
 
-
+        Debug.Log("CodeGen finished");
 
         //uncomment after finished testing
         //RemoveSelectedFiles();
@@ -2184,7 +2252,7 @@ prop.GetCustomAttributes(typeof(CompilerGeneratedAttribute), false).Any() ||
 
 
     // For testing you can add dummy files
-    [MenuItem("Window/Changed Files/Add Dummy")]
+    //[MenuItem("Window/SaveAndLoad/Test")]
     public static void AddDummy()
     {
         Vector3[] arr = new Vector3[] { new Vector3(1, 2, 3), new Vector3(4, 5, 6) };
@@ -2203,7 +2271,7 @@ prop.GetCustomAttributes(typeof(CompilerGeneratedAttribute), false).Any() ||
     static byte[] PackVector3Array(Vector3[] arr)
     {
         var floats = new float[arr.Length * 3];
-        for(int i =0; i < arr.Length; i++)
+        for (int i = 0; i < arr.Length; i++)
         {
             floats[i * 3] = arr[i].x;
             floats[i * 3 + 1] = arr[i].y;

@@ -1,15 +1,11 @@
 ﻿//auto-generated
-using UnityEngine.AI;
-using Assets._Project.Scripts.UtilScripts;
 using Assets._Project.Scripts.Infrastructure;
-using Assets._Project.Scripts.SaveAndLoad;
 using Assets._Project.Scripts.SaveAndLoad.SaveHandlerBases;
-using Assets._Project.Scripts.SaveAndLoad.SavableDelegates;
-using System.Collections.Generic;
+using Assets._Project.Scripts.UtilScripts;
 using System;
+using System.Collections.Generic;
 using System.Reflection;
-using UnityEngine;
-using Assets._Project.Scripts.UtilScripts.Extensions;
+using UnityEngine.AI;
 namespace Assets._Project.Scripts.SaveAndLoad.ThirdPartySaveHandlers.UnitySH.Navigation
 {
     [SaveHandler(625698679967909860, "NavMeshAgent", typeof(UnityEngine.AI.NavMeshAgent), order: -5, dependsOn: new[] { typeof(NavMeshData) })] ///<see cref="NavMeshSurfaceSaveHandler"/>
@@ -26,12 +22,6 @@ namespace Assets._Project.Scripts.SaveAndLoad.ThirdPartySaveHandlers.UnitySH.Nav
             __saveData.autoTraverseOffMeshLink = __instance.autoTraverseOffMeshLink;
             __saveData.autoBraking = __instance.autoBraking;
             __saveData.autoRepath = __instance.autoRepath;
-            //Debug.LogWarning(__instance.gameObject.HierarchyPath());
-            //Debug.LogWarning(__instance.gameObject.transform.position);
-            //foreach(var comp in __instance.gameObject.GetComponents<Component>())
-            //{
-            //    Debug.Log(comp.GetType().Name);
-            //}
             __saveData.isStopped = __instance.isStopped;
             __saveData.agentTypeID = __instance.agentTypeID;
             __saveData.areaMask = __instance.areaMask;

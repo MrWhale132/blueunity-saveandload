@@ -12,66 +12,17 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 54a2635c244f50349864ad4a011d6c9c, type: 3}
   m_Name: SaveAndLoadCodeGenWindowState
   m_EditorClassIdentifier: 
+  _didSetup: 1
   _scrollPos: {x: 0, y: 0}
   _eventqueue: []
   _changedFiles:
   - ChangeType: 4
-    FullPath: D:\Unity Projects\Unity Tanks! 2\Assets\_Tanks\Scripts\Tank\PowerUpDetector.cs
-    Name: _Tanks\Scripts\Tank\PowerUpDetector.cs
-  - ChangeType: 4
-    FullPath: D:\Unity Projects\Unity Tanks! 2\Assets\_Tanks\Scripts\Tank\TankAI.cs
-    Name: _Tanks\Scripts\Tank\TankAI.cs
-  - ChangeType: 4
-    FullPath: D:\Unity Projects\Unity Tanks! 2\Assets\_Tanks\Scripts\PowerUp\PowerUpSpawner.cs
-    Name: _Tanks\Scripts\PowerUp\PowerUpSpawner.cs
-  - ChangeType: 4
-    FullPath: D:\Unity Projects\Unity Tanks! 2\Assets\_Tanks\Scripts\Shell\ShellExplosion.cs
-    Name: _Tanks\Scripts\Shell\ShellExplosion.cs
-  - ChangeType: 4
-    FullPath: D:\Unity Projects\Unity Tanks! 2\Assets\_Tanks\Scripts\Managers\TankManager.cs
-    Name: _Tanks\Scripts\Managers\TankManager.cs
-  - ChangeType: 4
-    FullPath: D:\Unity Projects\Unity Tanks! 2\Assets\_Tanks\Scripts\Managers\GameManager.cs
-    Name: _Tanks\Scripts\Managers\GameManager.cs
-  - ChangeType: 4
-    FullPath: D:\Unity Projects\Unity Tanks! 2\Assets\_Tanks\Scripts\UI\MobileControl\VirtualInputs\UIVirtualJoystick.cs
-    Name: _Tanks\Scripts\UI\MobileControl\VirtualInputs\UIVirtualJoystick.cs
-  - ChangeType: 4
-    FullPath: D:\Unity Projects\Unity Tanks! 2\Assets\_Tanks\Scripts\UI\GameUIHandler.cs
-    Name: _Tanks\Scripts\UI\GameUIHandler.cs
-  - ChangeType: 4
-    FullPath: D:\Unity Projects\Unity Tanks! 2\Assets\_Tanks\Scripts\PowerUp\PowerUp.cs
-    Name: _Tanks\Scripts\PowerUp\PowerUp.cs
-  - ChangeType: 4
-    FullPath: D:\Unity Projects\Unity Tanks! 2\Assets\_Tanks\Scripts\UI\MessageTextReference.cs
-    Name: _Tanks\Scripts\UI\MessageTextReference.cs
-  - ChangeType: 4
-    FullPath: D:\Unity Projects\Unity Tanks! 2\Assets\_Tanks\Scripts\UI\StartMenuSlot.cs
-    Name: _Tanks\Scripts\UI\StartMenuSlot.cs
-  - ChangeType: 4
-    FullPath: D:\Unity Projects\Unity Tanks! 2\Assets\_Tanks\Scripts\UI\PauseMenu.cs
+    FullPath: D:\Unity Projects\Unity Tanks! 3\Assets\_Tanks\Scripts\UI\PauseMenu.cs
     Name: _Tanks\Scripts\UI\PauseMenu.cs
   - ChangeType: 4
-    FullPath: D:\Unity Projects\Unity Tanks! 2\Assets\_Tanks\Scripts\Tank\TankShooting.cs
-    Name: _Tanks\Scripts\Tank\TankShooting.cs
-  - ChangeType: 4
-    FullPath: D:\Unity Projects\Unity Tanks! 2\Assets\_Tanks\Scripts\Tank\TankHealth.cs
-    Name: _Tanks\Scripts\Tank\TankHealth.cs
-  - ChangeType: 4
-    FullPath: D:\Unity Projects\Unity Tanks! 2\Assets\_Tanks\Scripts\Tank\TankMovement.cs
-    Name: _Tanks\Scripts\Tank\TankMovement.cs
-  - ChangeType: 4
-    FullPath: D:\Unity Projects\Unity Tanks! 2\Assets\_Tanks\Scripts\Camera\CameraControl.cs
-    Name: _Tanks\Scripts\Camera\CameraControl.cs
-  - ChangeType: 4
-    FullPath: D:\Unity Projects\Unity Tanks! 2\Assets\_Tanks\Scripts\PowerUp\PowerUpHUD.cs
-    Name: _Tanks\Scripts\PowerUp\PowerUpHUD.cs
-  - ChangeType: 4
-    FullPath: D:\Unity Projects\Unity Tanks! 2\Assets\_Tanks\Scripts\PowerUp\PowerUpFX.cs
-    Name: _Tanks\Scripts\PowerUp\PowerUpFX.cs
-  - ChangeType: 4
-    FullPath: D:\Unity Projects\Unity Tanks! 2\Assets\_Tanks\Scripts\Tank\TankInputUser.cs
-    Name: _Tanks\Scripts\Tank\TankInputUser.cs
-  _selectedIndices: 
+    FullPath: D:\Unity Projects\Unity Tanks! 3\Assets\_Tanks\Scripts\Tank\TankAI.cs
+    Name: _Tanks\Scripts\Tank\TankAI.cs
+  _selectedIndices: 00000000
   _userSettings: {fileID: 11400000, guid: 8b67b65e7aed92246b93ac4b59be0137, type: 2}
   _selectedFolderToScan: _Tanks
+  _forceGenerateHandlersOfTypeGenConfigs: 1

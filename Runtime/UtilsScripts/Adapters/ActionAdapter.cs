@@ -37,7 +37,7 @@ namespace Theblueway.SaveAndLoad.Packages.com.theblueway.saveandload.Runtime.Uti
         {
             base.WriteSaveData();
 
-            __saveData.Action = Infra.Singleton.GetInvocationList(__instance.Action);
+            __saveData.Action = GetInvocationList(__instance.Action);
         }
 
         public override void LoadPhase1()

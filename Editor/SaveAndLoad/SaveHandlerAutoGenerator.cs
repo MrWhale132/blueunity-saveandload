@@ -329,7 +329,7 @@ public class SaveHandlerAutoGenerator : ScriptableObject
             string generatedTypeName = FlattenTypeNameIfNested(typeToHandle);
             string genericConstraints = GetgenericConstraintsText(typeToHandle);
             //string baseTypeGenericParameterList = CodeGenUtils.GetGenericParameterListText(typeToHandle.BaseType);
-            string attribute = GetAttributeTextWithoutId(typeToHandle);
+            string attribute = GetAttributeText(typeToHandle);
 
             IEnumerable<string> typeArgNames = typeToHandle.BaseType.IsGenericType ?
                 typeToHandle.BaseType.GetGenericArguments().Select(arg => CodeGenUtils.ToTypeReferenceText(arg, withNameSpace: true))
@@ -353,8 +353,6 @@ public class SaveHandlerAutoGenerator : ScriptableObject
                 GeneratedTypeText = _UnityEventSaveHandlerTemplate
                     .Replace(SaveHandlerAttribute, attribute)
                     .Replace(GeneratedTypeName, generatedTypeName)
-                    //todo: cleanup
-                    //.Replace(TargetTypeReference, CodeGenUtils.ToTypeReferenceText(typeToHandle, withNameSpace: true))
                     .Replace(GenericParameterList, baseTypeGenericParameterList)
                     .Replace(GenericConstraints, genericConstraints)
                     ,
@@ -410,7 +408,7 @@ public class SaveHandlerAutoGenerator : ScriptableObject
 
         //attribute
 
-        string GetAttributeTextWithoutId(Type typeToHandle)
+        string GetAttributeText(Type typeToHandle, bool withoutId = false)
         {
             var additionalParamList = new List<string>();
 
@@ -443,11 +441,17 @@ public class SaveHandlerAutoGenerator : ScriptableObject
 
 
             var attribute = _SaveHandlerAttributeTemplate
-                //.Replace(SaveHandlerId, id)
                 .Replace(HandledType, CodeGenUtils.ToTypeDefinitionText(typeToHandle, withNameSpace: true))
                 .Replace(GenerationMode, generationModeEnumText)
                 .Replace(AdditionalParamList, additionalParamListTest)
                 ;
+
+            if (!withoutId)
+            {
+                var id = RandomId.New.ToString();
+                attribute = attribute.Replace(SaveHandlerId, id);
+            }
+
 
             return attribute;
         }
@@ -482,7 +486,7 @@ public class SaveHandlerAutoGenerator : ScriptableObject
         foreach (var builder in generatedTypes)
         {
             builder.GeneratedTypeText = builder.GeneratedTypeText
-                .Replace(SaveHandlerAttribute, GetAttributeTextWithoutId(typeToHandle))
+                .Replace(SaveHandlerAttribute, GetAttributeText(typeToHandle, withoutId:true))
                 .Replace(BaseClassName, baseClass)
                 .Replace(SaveDataBaseClassName, saveDataBaseClassName)
                 .Replace(SaveHandlerId, id)
@@ -565,7 +569,7 @@ public class SaveHandlerAutoGenerator : ScriptableObject
                     string writeModifier = isField ? "ref " : "";
 
 
-                    writeData = $"{saveDataAccessor}{fieldName}.{nameof(CustomSaveData<int>.ReadFrom)}({readModifier}{instanceAccessor}{fieldName});";
+                    writeData = $"{saveDataAccessor}{fieldName}.{nameof(CustomSaveData<int>.ReadFrom)}({readModifier}{instanceAccessor}{fieldName}, {nameof(ISaveAndLoad.HandledObjectId)});";
 
                     if (isField)
                     {
@@ -684,7 +688,8 @@ public class SaveHandlerAutoGenerator : ScriptableObject
 
 
 
-        var handlerType = _saveAndLoadService.GetSaveHandlerTypeFrom(typeToHandle);
+        var handlerType = _saveAndLoadService.GetSaveHandlerTypeFrom(typeToHandle, isStatic);
+
         if (handlerType != null)
         {
             var savehandlerFilePath = session.GetSourceFilePath(handlerType);
@@ -1177,7 +1182,7 @@ public class SaveHandlerAutoGenerator : ScriptableObject
         _NewLine +
         $"{FieldList}" +
         _NewLine +
-        $"public override void ReadFrom(in {TargetTypeReference} instance)" +
+        $"public override void {nameof(CustomSaveData<int>.ReadFrom)}(in {TargetTypeReference} instance)" +
         _NewLine +
         "{" +
         _NewLine +
@@ -1185,7 +1190,7 @@ public class SaveHandlerAutoGenerator : ScriptableObject
         _NewLine +
         "}" +
         _NewLine +
-        $"public override void WriteTo(ref {TargetTypeReference} instance)" +
+        $"public override void {nameof(CustomSaveData<int>.WriteInto)}(ref {TargetTypeReference} instance)" +
         _NewLine +
         "{" +
         _NewLine +
