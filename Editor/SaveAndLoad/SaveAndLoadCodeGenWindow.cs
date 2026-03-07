@@ -15,6 +15,7 @@ using System.Linq;
 using System.Reflection;
 using System.Runtime.CompilerServices;
 using Theblueway.Core.Runtime.Packages.com.blueutils.core.Runtime.Debugging.Logging;
+using Theblueway.SaveAndLoad.Editor;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
@@ -2252,14 +2253,23 @@ prop.GetCustomAttributes(typeof(CompilerGeneratedAttribute), false).Any() ||
 
 
     // For testing you can add dummy files
-    //[MenuItem("Window/SaveAndLoad/Test")]
+    [MenuItem("Window/SaveAndLoad/Test")]
     public static void AddDummy()
     {
-        Vector3[] arr = new Vector3[] { new Vector3(1, 2, 3), new Vector3(4, 5, 6) };
-        var bytes = PackVector3Array(arr);
-        arr = UnpackVector3Array(bytes);
+        Shader shader = Shader.Find("Universal Render Pipeline/Lit");
+        var clone = JsonConvert.DeserializeObject<Shader>("{}");
+        clone = (Shader)System.Runtime.Serialization.FormatterServices.GetUninitializedObject(typeof(Shader));
+        clone = (Shader)typeof(Shader).GetConstructor(BindingFlags.Instance | BindingFlags.NonPublic, null, Type.EmptyTypes, null).Invoke(null);
 
-        Debug.Log(string.Join("\n", arr.Select(v => v.ToString())));
+        FieldInfo m_CachedPtr = typeof(UnityEngine.Object).GetField("m_CachedPtr", BindingFlags.NonPublic | BindingFlags.Instance);
+        FieldInfo m_InstanceID = typeof(UnityEngine.Object).GetField("m_InstanceID", BindingFlags.NonPublic | BindingFlags.Instance);
+
+        m_CachedPtr.SetValue(clone, m_CachedPtr.GetValue(shader));
+        m_InstanceID.SetValue(clone, m_InstanceID.GetValue(shader));
+        Debug.Log(clone is null);
+        Debug.Log(clone == null);
+        Debug.Log(clone.name);
+        Debug.Log(shader == clone);
         return;
         //debug
         //var window = GetWindow<SaveAndLoadCodeGenWindow>();
@@ -2268,32 +2278,10 @@ prop.GetCustomAttributes(typeof(CompilerGeneratedAttribute), false).Any() ||
     }
 
 
-    static byte[] PackVector3Array(Vector3[] arr)
-    {
-        var floats = new float[arr.Length * 3];
-        for (int i = 0; i < arr.Length; i++)
-        {
-            floats[i * 3] = arr[i].x;
-            floats[i * 3 + 1] = arr[i].y;
-            floats[i * 3 + 2] = arr[i].z;
-        }
-        var bytes = new byte[arr.Length * 12];
-        Buffer.BlockCopy(floats, 0, bytes, 0, bytes.Length);
-        return bytes;
-    }
 
 
-    static Vector3[] UnpackVector3Array(byte[] bytes)
-    {
-        var floats = new float[bytes.Length / 4];
-        Buffer.BlockCopy(bytes, 0, floats, 0, bytes.Length);
-        var arr = new Vector3[bytes.Length / 12];
-        for (int i = 0; i < arr.Length; i++)
-        {
-            arr[i] = new Vector3(floats[i * 3], floats[i * 3 + 1], floats[i * 3 + 2]);
-        }
-        return arr;
-    }
+
+
 
 
 

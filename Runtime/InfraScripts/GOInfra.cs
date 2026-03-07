@@ -17,6 +17,8 @@ using UnityEngine.UI;
 using Theblueway.Core.Runtime.Packages.com.blueutils.core.Runtime.Debugging.Logging;
 using Theblueway.Core.Runtime.Packages.com.blueutils.core.Runtime.Misc;
 using Theblueway.Core.Runtime;
+using Ionic.Zlib;
+
 
 
 
@@ -322,7 +324,9 @@ namespace Assets._Project.Scripts.Infrastructure
                     if (memberDesc.member == null)
                     {
                         Debug.LogError($"A null list element found in the inlined prefab member element list of gameobject: {gameObject.HierarchyPath()}.\n" +
-                            $"This is invalid and it should be removed. You can remove it manually or by triggering a recollection of members.\n" +
+                            $"This is invalid and it should be removed. This most often happens when you remove a component or a child and you dont refresh " +
+                            $"the prefab member list. ({nameof(InlinedPrefabDescription)}). " +
+                            $"You can remove it manually or by triggering a recollection of members.\n" +
                             $"Going to ignore it and continue on.");
                         continue;
                     }
@@ -386,6 +390,7 @@ namespace Assets._Project.Scripts.Infrastructure
             //results.Add(result);
 
 
+            HashSet<RandomId> added = new();
 
             foreach (var child in childrenAndSelf)
             {
@@ -402,9 +407,13 @@ namespace Assets._Project.Scripts.Infrastructure
 
                     foreach (var memberDesc in InlinedPrefabDescription.members)
                     {
+                        if(added.Contains(memberDesc.memberId)) Debug.LogError("ERROR: Multiple members of a prefabdescription shares the same memberid." +
+                            $"MemberId: {memberDesc.memberId}, member name: {memberDesc.member.name}, GameObject name: {gameObject.name}",gameObject);
+
                         //this may add the same member multiple times but with different ids, which, theoretically, should not be a problem
                         //because it doesnt matter if a member has multiple ids as long as those ids point back to the same member
                         result.membersById.Add(memberDesc.memberId, memberDesc.member);
+
                     }
 
                     results.Add(result);
@@ -436,6 +445,9 @@ namespace Assets._Project.Scripts.Infrastructure
 
                 foreach (var memberDesc in InlinedScenePlacedDescription.members)
                 {
+                    if (result.membersById.ContainsKey(memberDesc.memberId)) Debug.LogError("ERROR: Multiple members of a prefabdescription shares the same memberid." +
+                        $"MemberId: {memberDesc.memberId}, member name: {memberDesc.member.name}, GameObject name: {gameObject.name}", gameObject);
+
                     //this may add the same member multiple times but with different ids, which, theoretically, should not be a problem
                     //because it doesnt matter if a member has multiple ids as long as those ids point back to the same member
                     result.membersById.Add(memberDesc.memberId, memberDesc.member);

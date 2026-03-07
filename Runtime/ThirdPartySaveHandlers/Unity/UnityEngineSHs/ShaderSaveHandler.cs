@@ -4,6 +4,7 @@ using Assets._Project.Scripts.SaveAndLoad.SaveHandlerBases;
 using Assets._Project.Scripts.UtilScripts;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Reflection;
 using UnityEngine;
 
@@ -14,12 +15,17 @@ namespace UnityEngine_
     {
         public static Dictionary<string, RandomId> _registeredShadersByName = new();
 
+        public static FieldInfo m_CachedPtr= typeof(UnityEngine.Object).GetField("m_CachedPtr", BindingFlags.NonPublic | BindingFlags.Instance);
+#if UNITY_EDITOR
+        public static FieldInfo m_InstanceID = typeof(UnityEngine.Object).GetField("m_InstanceID", BindingFlags.NonPublic | BindingFlags.Instance); 
+#endif
+
 
         public override void Init(object instance)
         {
             base.Init(instance);
 
-            AddRegisteredShader(__instance.name, HandledObjectId, false);
+            //AddRegisteredShader(__instance.name, HandledObjectId, false);
         }
 
         public override void WriteSaveData()
@@ -40,12 +46,21 @@ namespace UnityEngine_
 
         public override void _AssignInstance()
         {
-            AddRegisteredShader(__saveData.name, HandledObjectId, true);
+            //AddRegisteredShader(__saveData.name, HandledObjectId, true);
+            var target = Shader.Find(__saveData.name);
+            var clone = (Shader)System.Runtime.Serialization.FormatterServices.GetUninitializedObject(typeof(Shader));
 
-            __instance = Shader.Find(__saveData.name);
+            m_CachedPtr.SetValue(clone, m_CachedPtr.GetValue(target));
 #if UNITY_EDITOR
-            __instance = UnityEngine.Object.Instantiate(__instance);
+            m_InstanceID.SetValue(clone, m_InstanceID.GetValue(target)); 
 #endif
+
+            //System.Runtime.Serialization.FormatterServices.PopulateObjectMembers //maybe?
+
+            __instance = clone;
+            //#if UNITY_EDITOR
+            //            __instance = UnityEngine.Object.Instantiate(__instance);
+            //#endif
         }
 
 

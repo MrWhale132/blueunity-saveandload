@@ -10,19 +10,26 @@ namespace Theblueway.SaveAndLoad.Runtime.TypeInterfaces
     [TypeInterface(280351672890743277, typeof(Graphic))]
     public class GraphicTypeInterface : TypeInterface<Graphic>
     {
-        public override Dictionary<int, TypeMember> Setup()
+        public override IEnumerable<TypeMember> GetMembers()
         {
-            return new()
-            {
-                {0,runInEditMode },
-                {1,CodeGenUtils.GetMethodSignature(OnRebuildRequested) },
-            };
+            yield return (0, runInEditMode);
+            yield return (1, CodeGenUtils.GetMethodSignature(OnRebuildRequested));
+            yield return (2, "test1");
+            yield return (3, "test2");
+            yield return (4, "test3");
         }
 
+
+#if UNITY_EDITOR
         string runInEditMode => nameof(Graphic.runInEditMode);
+#else
+        string runInEditMode => "";
+#endif
         public void OnRebuildRequested()
         {
+#if UNITY_EDITOR
             Action _ = instance.OnRebuildRequested;
+#endif
         }
     }
 }

@@ -1,8 +1,8 @@
 ﻿using Assets._Project.Scripts.UtilScripts;
 using UnityEditor;
 using UnityEngine;
-using Thebluway.Core.Editor.Extensions;
-using Thebluway.Core;
+using Theblueway.Core.Editor.Extensions;
+using Theblueway.Core;
 
 namespace Packages.com.theblueway.saveandload.Editor.SaveAndLoad
 {

@@ -22,6 +22,18 @@ MonoBehaviour:
   - ChangeType: 4
     FullPath: D:\Unity Projects\Unity Tanks! 3\Assets\_Tanks\Scripts\Tank\TankAI.cs
     Name: _Tanks\Scripts\Tank\TankAI.cs
+  - ChangeType: 4
+    FullPath: D:\Unity Projects\Unity Tanks! 3\Assets\_Tanks\Scripts\Managers\TankManager.cs
+    Name: _Tanks\Scripts\Managers\TankManager.cs
+  - ChangeType: 4
+    FullPath: D:\Unity Projects\Unity Tanks! 3\Assets\_Tanks\Scripts\UI\GameUIHandler.cs
+    Name: _Tanks\Scripts\UI\GameUIHandler.cs
+  - ChangeType: 4
+    FullPath: D:\Unity Projects\Unity Tanks! 3\Assets\_Project\Scripts\Generated\TheBlueWay\SaveHandlers\UnityEngine.UI\DevTest\UnityEngine\UI\GraphicSaveHandler.cs
+    Name: _Project\Scripts\Generated\TheBlueWay\SaveHandlers\UnityEngine.UI\DevTest\UnityEngine\UI\GraphicSaveHandler.cs
+  - ChangeType: 4
+    FullPath: D:\Unity Projects\Unity Tanks! 3\Assets\_Project\Scripts\Generated\TheBlueWay\SaveHandlers\UnityEngine.CoreModule\DevTest\UnityEngine\LightSaveHandler.cs
+    Name: _Project\Scripts\Generated\TheBlueWay\SaveHandlers\UnityEngine.CoreModule\DevTest\UnityEngine\LightSaveHandler.cs
   _selectedIndices: 00000000
   _userSettings: {fileID: 11400000, guid: 8b67b65e7aed92246b93ac4b59be0137, type: 2}
   _selectedFolderToScan: _Tanks

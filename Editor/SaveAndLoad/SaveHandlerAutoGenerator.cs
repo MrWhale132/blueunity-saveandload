@@ -14,6 +14,7 @@ using Assets._Project.Scripts.UtilScripts.Extensions;
 using Unity.Collections;
 using UnityEngine.Events;
 using Theblueway.SaveAndLoad.Packages.com.theblueway.saveandload.Runtime;
+using Theblueway.SaveAndLoad.Editor;
 
 
 
@@ -850,7 +851,7 @@ public class SaveHandlerAutoGenerator : ScriptableObject
 
                 if (settings.HasInclusionModeFor(methodId, out var inclusionMode))
                 {
-                    if (inclusionMode is Packages.com.theblueway.saveandload.Editor.SaveAndLoad.MemberInclusionMode.Exclude)
+                    if (inclusionMode is MemberInclusionMode.Exclude)
                     {
                         dictEntries.Remove(methodId);
                         if (idToMethodLookUpLines.ContainsKey(methodId)) idToMethodLookUpLines.Remove(methodId);

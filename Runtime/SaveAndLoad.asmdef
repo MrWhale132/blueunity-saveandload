@@ -1,6 +1,6 @@
 {
     "name": "SaveAndLoad",
-    "rootNamespace": "Theblueway.SaveAndLoad",
+    "rootNamespace": "Theblueway.SaveAndLoad.Runtime",
     "references": [
         "GUID:11f9f0384cd82b14ea5d004a22a3f210",
         "GUID:afb50bebb3c21a74c9b64e57ab3c8268",

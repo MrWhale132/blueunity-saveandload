@@ -3,7 +3,7 @@ using Assets._Project.Scripts.UtilScripts;
 using System;
 using System.Collections.Generic;
 using Theblueway.Core.Runtime.Packages.com.blueutils.core.Runtime.ScriptResources;
-using Thebluway.Core;
+using Theblueway.Core;
 using UnityEngine;
 using Object = UnityEngine.Object;
 

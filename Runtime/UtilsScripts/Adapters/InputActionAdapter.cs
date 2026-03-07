@@ -49,10 +49,10 @@ namespace Theblueway.SaveAndLoad.Packages.com.theblueway.saveandload.Runtime.Uti
         }
         public bool IsPressed()
         {
-
             return __inputAction.IsPressed();
-
         }
+
+        
 
 
 
@@ -104,6 +104,15 @@ namespace Theblueway.SaveAndLoad.Packages.com.theblueway.saveandload.Runtime.Uti
             public RandomId __inputAction;
             public RandomId performed;
             public RandomId canceled;
+        }
+    }
+
+
+    public static class InputActionAdapterExtensions
+    {
+        public static InputActionAdapter ToAdapter(this InputAction inputAction)
+        {
+            return new InputActionAdapter(inputAction);
         }
     }
 }

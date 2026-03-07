@@ -26,3 +26,24 @@ MonoBehaviour:
       directive: UNITY_EDITOR
       methodId: 151234836762595702
     logContext: {fileID: 11400000}
+  _config:
+    _typeInterfaceId: 280351672890743277
+    _displayTypeName: Graphic | UnityEngine.UI | UnityEngine.UI
+    __lastKnownTypeInterfaceId: 280351672890743277
+    __lastKnownTypeName: UnityEngine.UI.Graphic, UnityEngine.UI
+    _memberConfigs:
+    - memberName: OnRebuildRequested():mscorlib System.Void
+      _memberIndex: 0
+      inclusionMode: 0
+      directive: 
+      _typeInterfaceId: 280351672890743277
+    - memberName: runInEditMode
+      _memberIndex: 0
+      inclusionMode: 0
+      directive: 
+      _typeInterfaceId: 280351672890743277
+    - memberName: OnRebuildRequested():mscorlib System.Void
+      _memberIndex: 1
+      inclusionMode: 0
+      directive: 
+      _typeInterfaceId: 280351672890743277
