@@ -1,6 +1,7 @@
-﻿
+﻿using Theblueway.Core.Runtime.Extensions;
 using System.Collections.Generic;
 using System.Reflection;
+using Theblueway.CodeGen.Runtime;
 using Theblueway.SaveAndLoad.Editor;
 using UnityEngine;
 
@@ -13,56 +14,128 @@ namespace Packages.com.theblueway.saveandload.Editor.SaveAndLoad
 
     public class SaveHandlerTypeGenerationSettings
     {
+        public class MemberSettings
+        {
+            public string memberName;
 
-        public List<SaveHandlerTypeGenerationConfig> _configs;
+            public MemberInclusionMode inclusionMode = MemberInclusionMode.Include;
+            public string directive;
 
-        public Dictionary<MemberKey, MemberInclusionMode> _memberInclusionMode = new();
-        public Dictionary<MemberKey, string> _memberDirective = new();
+            public bool DirectiveIsSet => !string.IsNullOrEmpty(directive);
+        }
+
+        public Dictionary<string, MemberSettings> _memberSettingsByMemberName = new();
+
+
         public SaveHandlerAttributeGenerationSettings _attributeGenerationSettings;
 
 
-        public SaveHandlerTypeGenerationSettings(List<SaveHandlerTypeGenerationConfig> typeGenerationConfigs = null)
+
+        public static SaveHandlerTypeGenerationSettings From(List<SaveHandlerTypeGenerationConfiguration> configs)
         {
-            _configs = typeGenerationConfigs;
+            Dictionary<string, MemberSettings> memberSettingsByName = new();
+            Dictionary<string, Object> logContextesByMemberName = new();
+
+
+            var attributeSettings = new SaveHandlerAttributeGenerationSettings();
+            bool hasAttributeSettings = false;
+
+            foreach (var config in configs)
+            {
+                foreach (var memberConfig in config._memberConfigs)
+                {
+                    if (memberSettingsByName.TryGetValue(memberConfig.memberName, out var memberSettings))
+                    {
+                        Debug.LogError($"Multiple savehandler type gen configs try to configure the same member. First wins, rest is ignored.\n" +
+                            $"Member name: {memberConfig.memberName}", config.logContext);
+
+                        Debug.LogError("First config that added this member:", logContextesByMemberName[memberConfig.memberName]);
+                        continue;
+                    }
+
+                    memberSettings = new MemberSettings
+                    {
+                        memberName = memberConfig.memberName,
+                        inclusionMode = memberConfig.inclusionMode,
+                        directive = memberConfig.directive,
+                    };
+
+                    memberSettingsByName.Add(memberConfig.memberName, memberSettings);
+                    logContextesByMemberName.Add(memberConfig.memberName, config.logContext);
+                }
+
+
+                if (config._loadOrder != 0)
+                {
+                    if (attributeSettings.loadOrder.HasValue)
+                    {
+                        if (attributeSettings.loadOrder.Value != config._loadOrder)
+                        {
+                                Debug.LogError($"SaveHandlerTypeGenerationSettings: Conflicting load orders for type {config.ConfiguredType.CleanAssemblyQualifiedName()}: '{attributeSettings.loadOrder.Value}' vs '{config._loadOrder}'.", config.logContext);
+                        }
+                    }
+                    else
+                    {
+                        hasAttributeSettings = true;
+                        attributeSettings.loadOrder = config._loadOrder;
+                    }
+                }
+
+            }
+
+
+            var settings = new SaveHandlerTypeGenerationSettings
+            {
+                _memberSettingsByMemberName = memberSettingsByName,
+                _attributeGenerationSettings = hasAttributeSettings ? attributeSettings : null,
+            };
+
+            return settings;
         }
+
 
         public bool HasInclusionModeFor(MemberInfo member, out MemberInclusionMode inclusionMode)
         {
-            return HasInclusionModeFor(MemberKey.From(member), out inclusionMode);
-        }
-        public bool HasInclusionModeFor(string methodId, out MemberInclusionMode inclusionMode)
-        {
-            return HasInclusionModeFor(MemberKey.From(methodId), out inclusionMode);
-        }
+            string key = member.Name;
 
-        public bool HasInclusionModeFor(MemberKey member, out MemberInclusionMode inclusionMode)
-        {
-            if (_memberInclusionMode.TryGetValue(member, out inclusionMode))
+            if(member is MethodInfo methodInfo)
             {
+                key = TypeUtils.GetMethodSignature(methodInfo);
+            }
+
+            if(_memberSettingsByMemberName.TryGetValue(key, out var memberSettings))
+            {
+                inclusionMode = memberSettings.inclusionMode;
                 return true;
             }
-            inclusionMode = (MemberInclusionMode)(-1);
-            return false;
+            else
+            {
+                inclusionMode = (MemberInclusionMode)(-1);
+                return false;
+            }
         }
+
 
 
         public bool HasDirective(MemberInfo member, out string directive)
         {
-            return HasDirective(MemberKey.From(member), out directive);
-        }
-        public bool HasDirective(string methodId, out string directive)
-        {
-            return HasDirective(MemberKey.From(methodId), out directive);
-        }
+            string key = member.Name;
 
-        public bool HasDirective(MemberKey member, out string directive)
-        {
-            if (_memberDirective.TryGetValue(member, out directive))
+            if (member is MethodInfo methodInfo)
             {
+                key = TypeUtils.GetMethodSignature(methodInfo);
+            }
+
+            if (_memberSettingsByMemberName.TryGetValue(key, out var memberSettings) && memberSettings.DirectiveIsSet)
+            {
+                directive = memberSettings.directive;
                 return true;
             }
-            directive = null;
-            return false;
+            else
+            {
+                directive = null;
+                return false;
+            }
         }
 
 
@@ -76,139 +149,12 @@ namespace Packages.com.theblueway.saveandload.Editor.SaveAndLoad
             settings = null;
             return false;
         }
-
-
-        public bool IsValid(bool logErrorMessages = false)
-        {
-            bool isValid = true;
-
-            if (_configs != null)
-            {
-                var attributeSettings = new SaveHandlerAttributeGenerationSettings();
-                bool hasAttributeSettings = false;
-
-
-                foreach (var typeConfig in _configs)
-                {
-                    if(typeConfig._loadOrder != 0)
-                    {
-                        if (attributeSettings.loadOrder.HasValue)
-                        {
-                            if(attributeSettings.loadOrder.Value != typeConfig._loadOrder)
-                            {
-                                isValid = false;
-                                if (logErrorMessages)
-                                    Debug.LogError($"SaveHandlerTypeGenerationSettings: Conflicting load orders for type '{typeConfig.handlerIdOfConfiguredType}': '{attributeSettings.loadOrder.Value}' vs '{typeConfig._loadOrder}'.", typeConfig.logContext);
-                            }
-                        }
-                        else
-                        {
-                            hasAttributeSettings = true;
-                            attributeSettings.loadOrder = typeConfig._loadOrder;
-                        }
-                    }
-
-                    
-                    foreach (var memberConfig in typeConfig.memberConfigs)
-                    {
-                        MemberKey key;
-
-                        if (memberConfig.methodId != 0)
-                        {
-                            key = MemberKey.From(memberConfig.methodId.ToString());
-                        }
-                        else
-                        {
-                            key = MemberKey.From(memberConfig.MemberInfo);
-                        }
-
-
-                        if (_memberInclusionMode.TryGetValue(key, out var existingInclusionMode))
-                        {
-                            if (existingInclusionMode != memberConfig.inclusionMode)
-                            {
-                                isValid = false;
-                                if (logErrorMessages)
-                                    Debug.LogError($"SaveHandlerTypeGenerationSettings: Conflicting inclusion modes for member '{memberConfig.memberName}': '{existingInclusionMode}' vs '{memberConfig.inclusionMode}'.", typeConfig.logContext);
-                            }
-                        }
-                        else
-                        {
-                            _memberInclusionMode[key] = memberConfig.inclusionMode;
-                        }
-
-
-                        if (_memberDirective.TryGetValue(key, out var existingDirective))
-                        {
-                            _memberDirective[key] = existingDirective + " || " + memberConfig.directive;
-                        }
-                        else
-                        {
-                            _memberDirective[key] = memberConfig.directive;
-                        }
-                    }
-                }
-
-                if (hasAttributeSettings)
-                    _attributeGenerationSettings = attributeSettings;
-            }
-
-            return isValid;
-        }
     }
 
 
-
-    public struct MemberKey
+    public enum MemberInclusionMode
     {
-        public string key;
-
-
-        public MemberKey(MemberInfo member)
-        {
-            string underlyingKey = member.Name + " " + member.DeclaringType.AssemblyQualifiedName; //todo
-
-            key = underlyingKey;
-        }
-
-        public MemberKey(string methodId)
-        {
-            key = methodId;
-        }
-
-        public static MemberKey From(MemberInfo member)
-        {
-            var key = new MemberKey(member);
-
-            return key;
-        }
-
-        public static MemberKey From(string methodId)
-        {
-            var key = new MemberKey(methodId);
-
-            return key;
-        }
-
-
-        public override bool Equals(object obj)
-        {
-            if (obj is MemberKey otherKey)
-            {
-                if (otherKey.key == key)
-                    return true;
-
-                return false;
-            }
-            else
-            {
-                return base.Equals(obj);
-            }
-        }
-
-        public override int GetHashCode()
-        {
-            return key.GetHashCode();
-        }
+        Include,
+        Exclude,
     }
 }

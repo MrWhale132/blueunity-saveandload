@@ -1,8 +1,8 @@
 ﻿using Assets._Project.Scripts.Infrastructure;
 using Assets._Project.Scripts.SaveAndLoad.SavableDelegates;
 using Assets._Project.Scripts.UtilScripts;
-using Assets._Project.Scripts.UtilScripts.CodeGen;
 using System;
+using Theblueway.Core.Runtime.Extensions;
 using Theblueway.SaveAndLoad.Packages.com.theblueway.saveandload.Runtime;
 using UnityEngine;
 using UnityEngine.Scripting;

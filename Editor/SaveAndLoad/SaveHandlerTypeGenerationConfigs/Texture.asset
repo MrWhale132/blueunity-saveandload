@@ -26,3 +26,15 @@ MonoBehaviour:
       directive: 
       methodId: 0
     logContext: {fileID: 11400000}
+  _config:
+    _typeInterfaceId: 374880314333943428
+    _displayTypeName: Texture | UnityEngine.CoreModule | UnityEngine
+    __lastKnownTypeInterfaceId: 374880314333943428
+    __lastKnownTypeName: UnityEngine.Texture, UnityEngine.CoreModule
+    _memberConfigs:
+    - memberName: imageContentsHash
+      _memberIndex: 0
+      inclusionMode: 1
+      directive: 
+      _typeInterfaceId: 374880314333943428
+  _triggerSaveHandlerRegeneration: 0

@@ -1,0 +1,46 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 46ae51ed033b10f41afc2458114b99c9, type: 3}
+  m_Name: InputUser
+  m_EditorClassIdentifier: 
+  config:
+    _triggerValidate: 0
+    handlerIdOfConfiguredType: 0
+    _configuredTypeState: 0
+    _lastKnownHandlerIdOfConfiguredType: 0
+    _lastKnownTypeNameOfConfiguredType: 
+    _wasStatic: 0
+    _loadOrder: 0
+    memberConfigs: []
+    logContext: {fileID: 11400000}
+  _config:
+    _typeInterfaceId: 657461495204722195
+    _displayTypeName: InputUser | Unity.InputSystem | UnityEngine.InputSystem.Users
+    __lastKnownTypeInterfaceId: 657461495204722195
+    __lastKnownTypeName: UnityEngine.InputSystem.Users.InputUser, Unity.InputSystem
+    _memberConfigs:
+    - memberName: onChange
+      _memberIndex: 0
+      inclusionMode: 1
+      directive: 
+      _typeInterfaceId: 657461495204722195
+    - memberName: onUnpairedDeviceUsed
+      _memberIndex: 1
+      inclusionMode: 1
+      directive: 
+      _typeInterfaceId: 657461495204722195
+    - memberName: onPrefilterUnpairedDeviceActivity
+      _memberIndex: 2
+      inclusionMode: 1
+      directive: 
+      _typeInterfaceId: 657461495204722195
+  _triggerSaveHandlerRegeneration: 0

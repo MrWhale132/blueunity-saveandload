@@ -2,10 +2,10 @@
 using Assets._Project.Scripts.Infrastructure;
 using Assets._Project.Scripts.SaveAndLoad.SavableDelegates;
 using Assets._Project.Scripts.SaveAndLoad.SaveHandlerBases;
-using Assets._Project.Scripts.UtilScripts.CodeGen;
 using System;
 using System.Collections.Generic;
 using System.Reflection;
+using Theblueway.Core.Runtime;
 using UnityEngine;
 using UnityEngine.Events;
 
@@ -26,7 +26,7 @@ namespace Assets._Project.Scripts.SaveAndLoad.ThirdPartySaveHandlers.Unity.Unity
                     $"ObjectId: {HandledObjectId}");
             }
 
-            IEnumerable<(MethodInfo, object)> methodsAndTargets = CodeGenUtils.GetRuntimeDelegatesFromUnityEvent(__instance, _typeArgs);
+            IEnumerable<(MethodInfo, object)> methodsAndTargets = ReflectionTools.GetRuntimeDelegatesFromUnityEvent(__instance, _typeArgs);
 
             __saveData.invocationList.Clear();
             foreach(var tuple in methodsAndTargets)

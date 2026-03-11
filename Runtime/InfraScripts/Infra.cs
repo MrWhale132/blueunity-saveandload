@@ -2,16 +2,16 @@
 using Assets._Project.Scripts.SaveAndLoad.SavableDelegates;
 using Assets._Project.Scripts.SaveAndLoad.SaveHandlerBases;
 using Assets._Project.Scripts.UtilScripts;
-using Assets._Project.Scripts.UtilScripts.CodeGen;
 using Assets._Project.Scripts.UtilScripts.Misc;
 using Newtonsoft.Json;
 using System;
+using Theblueway.Core.Runtime.Extensions;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using System.Runtime.CompilerServices;
-using Theblueway.Core.Runtime;
+using Theblueway.CodeGen.Runtime;
 using Theblueway.SaveAndLoad.Packages.com.theblueway.saveandload.Runtime;
 using Theblueway.SaveAndLoad.Packages.com.theblueway.saveandload.Runtime.InfraScripts;
 using UnityEngine;
@@ -955,7 +955,7 @@ namespace Assets._Project.Scripts.Infrastructure
             //if (targetType.IsGenericType) targetType = targetType.GetGenericTypeDefinition();
 
 
-            string signature = CodeGenUtils.GetMethodSignature(Method);
+            string signature = TypeUtils.GetMethodSignature(Method);
 
 
 
@@ -986,7 +986,7 @@ namespace Assets._Project.Scripts.Infrastructure
                 if (Method.IsGenericMethod)
                 {
                     //todo: cache the signature per MethodInfo
-                    string methodDefSignature = CodeGenUtils.GetMethodSignature(Method.GetGenericMethodDefinition());
+                    string methodDefSignature = TypeUtils.GetMethodSignature(Method.GetGenericMethodDefinition());
                     methodId = __methodIdsByMethodSignaturePerType[targetType][methodDefSignature];
                 }
 
@@ -1010,7 +1010,7 @@ namespace Assets._Project.Scripts.Infrastructure
                 {
                     var methodDef = Method.GetGenericMethodDefinition();
 
-                    var methodDefSignature = CodeGenUtils.GetMethodSignature(methodDef);
+                    var methodDefSignature = TypeUtils.GetMethodSignature(methodDef);
 
 
                     if (__methodIdsByMethodSignaturePerType[targetType].TryGetValue(methodDefSignature, out var methodId))

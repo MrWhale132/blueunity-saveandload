@@ -1,31 +1,26 @@
-﻿
-using Assets._Project.Scripts.UtilScripts.CodeGen;
+﻿#pragma warning disable 8321 // Unused local function
 using System;
 using System.Collections.Generic;
-using Theblueway.Core.Runtime.TypeInterfaceScripts;
+using Theblueway.TypeBinding.Runtime.TypeInterfaceScripts;
 using UnityEngine.UI;
+using static Theblueway.CodeGen.Runtime.TypeUtils;
 
 namespace Theblueway.SaveAndLoad.Runtime.TypeInterfaces
 {
     [TypeInterface(280351672890743277, typeof(Graphic))]
     public class GraphicTypeInterface : TypeInterface<Graphic>
     {
+        static TypeMember[] _members = new TypeMember[]
+        {
+            (0, GetMethodSignature<Action>(OnRebuildRequested)),
+        };
+
         public override IEnumerable<TypeMember> GetMembers()
         {
-            yield return (0, runInEditMode);
-            yield return (1, CodeGenUtils.GetMethodSignature(OnRebuildRequested));
-            yield return (2, "test1");
-            yield return (3, "test2");
-            yield return (4, "test3");
+            return _members;
         }
 
-
-#if UNITY_EDITOR
-        string runInEditMode => nameof(Graphic.runInEditMode);
-#else
-        string runInEditMode => "";
-#endif
-        public void OnRebuildRequested()
+        static void OnRebuildRequested()
         {
 #if UNITY_EDITOR
             Action _ = instance.OnRebuildRequested;

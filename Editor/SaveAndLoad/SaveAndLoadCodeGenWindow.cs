@@ -14,6 +14,8 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Runtime.CompilerServices;
+using Theblueway.CodeGen.Runtime;
+using Theblueway.Core.Runtime.Extensions;
 using Theblueway.Core.Runtime.Packages.com.blueutils.core.Runtime.Debugging.Logging;
 using Theblueway.SaveAndLoad.Editor;
 using UnityEditor;
@@ -21,7 +23,6 @@ using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.Events;
 using UnityEngine.EventSystems;
-using UnityEngine.Rendering;
 using UnityEngine.SceneManagement;
 using static SaveHandlerAutoGenerator;
 using Debug = UnityEngine.Debug;
@@ -155,39 +156,7 @@ public class SaveAndLoadCodeGenWindow : EditorWindow
 
         var typeGenConfigs = session.TypeGenerationSettingsRegistry.GatherAllScriptableConfigs();
 
-        List<SaveHandlerTypeGenerationConfigSO> lostTrackingConfigs = new();
-
-        foreach (var config in typeGenConfigs)
-        {
-            bool valid = config.config.IsValid(out var configState, logErrorMessages: false, context: config);
-
-            if (!valid && configState == SaveHandlerTypeGenerationConfig.ConfiguredTypeState.LostTracking)
-            {
-                lostTrackingConfigs.Add(config);
-            }
-            else if (forceRegenerate)
-            {
-                lostTrackingConfigs.Add(config);
-            }
-        }
-
-
-        List<Type> lostTrackTypes = new();
-
-        foreach (var config in lostTrackingConfigs)
-        {
-            Type type = VersionedTypeResolver.Resolve(config.config._lastKnownTypeNameOfConfiguredType);
-            lostTrackTypes.Add(type);
-        }
-
-        //todo: hack so the registry will have an empty cache, so it does not try to find the configs and validate them
-        //we dont want to validate them yet because they are invalid yet. fix it somewhen...
-        //that is why we run the codegen twice, first, we generate the handler for the type the configs supopsed to configure
-        //then we run the codegen again, this time with valid configs because they supposed to find the type they are configuring.
-
-        session.TypeGenerationSettingsRegistry._isBuilt = true;
-
-        CreateTypeReportsAndRunCodeGen(lostTrackTypes, session);
+        IEnumerable<Type> configuredTypes = typeGenConfigs.Select(config => config._config.ConfiguredType).Where(t => t != null);
 
         session.TypeGenerationSettingsRegistry.CacheInvalidate();
 
@@ -195,7 +164,7 @@ public class SaveAndLoadCodeGenWindow : EditorWindow
 
         session.UserSettings.ForceGenerateForUnchangedTypesToo = true;
 
-        CreateTypeReportsAndRunCodeGen(lostTrackTypes, session);
+        CreateTypeReportsAndRunCodeGen(configuredTypes, session);
 
         session.UserSettings.ForceGenerateForUnchangedTypesToo = orig;
 
@@ -216,27 +185,6 @@ public class SaveAndLoadCodeGenWindow : EditorWindow
     {
         CodeGenUtils.Config = ToCodeGenConfig(_userSettings);
 
-
-
-        if (!_state._didSetup)
-        {
-            GUILayout.Space(100);
-
-            GUILayout.BeginHorizontal();
-            GUILayout.FlexibleSpace();
-
-            if (GUILayout.Button("Set Up", GUILayout.Width(100)))
-            {
-                EnsureTypeGenConfigs(forceRegenerate:false);
-
-                _state._didSetup = true;
-            }
-
-            GUILayout.FlexibleSpace();
-            GUILayout.EndHorizontal();
-
-            return;
-        }
 
 
 
@@ -985,6 +933,12 @@ public class SaveAndLoadCodeGenWindow : EditorWindow
 
         foreach (var type in typesToHandle)
         {
+            if(type == null)
+            {
+                Debug.LogWarning("Found null reference in codegeneration logic. Please do not send null references for codegen.");
+                continue;
+            }
+
             discoveryQueue.Enqueue(type);
         }
 
@@ -1076,10 +1030,6 @@ public class SaveAndLoadCodeGenWindow : EditorWindow
 
             var type = discoveryQueue.Dequeue();
 
-            //if(type.Name == "AudioSource")
-            //{
-
-            //}
 
             var obsolete = type.GetCustomAttribute<ObsoleteAttribute>(false);
 
@@ -1285,7 +1235,7 @@ public class SaveAndLoadCodeGenWindow : EditorWindow
                 var properties = CodeGenUtils.GetSimpleProperties(type, binding).ToList();
 
                 //todo: config
-                var methods = type.GetUsableMethods(binding | BindingFlags.DeclaredOnly).ToArray();
+                var methods = type.GetUsableMethods(binding | BindingFlags.DeclaredOnly).ToList();
 
                 List<EventInfo> events = type.GetEvents(binding).ToList();
 
@@ -1293,7 +1243,7 @@ public class SaveAndLoadCodeGenWindow : EditorWindow
                 if (_userSettings.IgnoreAnyObsolete)
                 {
                     //fields, properties: already skipped them
-                    methods = methods.Where(m => !m.IsDefined(typeof(ObsoleteAttribute))).ToArray();
+                    methods = methods.Where(m => !m.IsDefined(typeof(ObsoleteAttribute))).ToList();
                     events = events.Where(e => !e.IsDefined(typeof(ObsoleteAttribute))).ToList();
                 }
 
@@ -1321,6 +1271,17 @@ public class SaveAndLoadCodeGenWindow : EditorWindow
                             if (inclusionMode is MemberInclusionMode.Exclude)
                             {
                                 events.Remove(e);
+                            }
+                        }
+                    }
+
+                    foreach(var method in methods)
+                    {
+                        if (settings.HasInclusionModeFor(method, out var inclusionMode))
+                        {
+                            if (inclusionMode is MemberInclusionMode.Exclude)
+                            {
+                                methods.Remove(method);
                             }
                         }
                     }
@@ -1373,7 +1334,7 @@ public class SaveAndLoadCodeGenWindow : EditorWindow
                     && staticReport.FieldsReport.ValidFields.Count == 0
                     && staticReport.Properties.Count() == 0
                     && staticReport.Events.Count() == 0
-                    && staticReport.Methods.Length == 0)
+                    && staticReport.Methods.Count == 0)
                 {
                     //if there is no static members, dont generate a static handler
                     instanceReport.StaticReport = null;
@@ -2112,7 +2073,7 @@ public class SaveAndLoadCodeGenWindow : EditorWindow
         public Type ReportedType;
         public GetFieldInfosReport FieldsReport;
         public IEnumerable<PropertyInfo> Properties;
-        public MethodInfo[] Methods;
+        public List<MethodInfo> Methods;
         public IEnumerable<EventInfo> Events;
     }
 

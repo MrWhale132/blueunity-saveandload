@@ -12,8 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 54a2635c244f50349864ad4a011d6c9c, type: 3}
   m_Name: SaveAndLoadCodeGenWindowState
   m_EditorClassIdentifier: 
-  _didSetup: 1
-  _scrollPos: {x: 0, y: 0}
+  _scrollPos: {x: 0, y: 33}
   _eventqueue: []
   _changedFiles:
   - ChangeType: 4
@@ -34,7 +33,43 @@ MonoBehaviour:
   - ChangeType: 4
     FullPath: D:\Unity Projects\Unity Tanks! 3\Assets\_Project\Scripts\Generated\TheBlueWay\SaveHandlers\UnityEngine.CoreModule\DevTest\UnityEngine\LightSaveHandler.cs
     Name: _Project\Scripts\Generated\TheBlueWay\SaveHandlers\UnityEngine.CoreModule\DevTest\UnityEngine\LightSaveHandler.cs
-  _selectedIndices: 00000000
+  - ChangeType: 4
+    FullPath: D:\Unity Projects\Unity Tanks! 3\Assets\_Project\Scripts\Z.cs
+    Name: _Project\Scripts\Z.cs
+  - ChangeType: 4
+    FullPath: D:\Unity Projects\Unity Tanks! 3\Assets\_Project\Scripts\Generated\TheBlueWay\SaveHandlers\UnityEngine.CoreModule\DevTest\UnityEngine\MonoBehaviourSaveHandler.cs
+    Name: _Project\Scripts\Generated\TheBlueWay\SaveHandlers\UnityEngine.CoreModule\DevTest\UnityEngine\MonoBehaviourSaveHandler.cs
+  - ChangeType: 4
+    FullPath: D:\Unity Projects\Unity Tanks! 3\Assets\_Project\Scripts\Generated\TheBlueWay\SaveHandlers\UnityEngine.AudioModule\DevTest\UnityEngine\AudioSourceSaveHandler.cs
+    Name: _Project\Scripts\Generated\TheBlueWay\SaveHandlers\UnityEngine.AudioModule\DevTest\UnityEngine\AudioSourceSaveHandler.cs
+  - ChangeType: 1
+    FullPath: D:\Unity Projects\Unity Tanks! 3\Assets\_Project\Scripts\GenZ.cs
+    Name: _Project\Scripts\GenZ.cs
+  - ChangeType: 4
+    FullPath: D:\Unity Projects\Unity Tanks! 3\Assets\_Project\Scripts\GenZ.cs
+    Name: _Project\Scripts\GenZ.cs
+  - ChangeType: 4
+    FullPath: D:\Unity Projects\Unity Tanks! 3\Assets\_Project\Scripts\Generated\TheBlueWay\SaveHandlers\UnityEngine.UIModule\DevTest\UnityEngine\CanvasSaveHandler.cs
+    Name: _Project\Scripts\Generated\TheBlueWay\SaveHandlers\UnityEngine.UIModule\DevTest\UnityEngine\CanvasSaveHandler.cs
+  - ChangeType: 4
+    FullPath: D:\Unity Projects\Unity Tanks! 3\Assets\_Project\Scripts\Generated\TheBlueWay\SaveHandlers\UnityEngine.UIModule\DevTest\UnityEngine\CanvasRendererSaveHandler.cs
+    Name: _Project\Scripts\Generated\TheBlueWay\SaveHandlers\UnityEngine.UIModule\DevTest\UnityEngine\CanvasRendererSaveHandler.cs
+  - ChangeType: 4
+    FullPath: D:\Unity Projects\Unity Tanks! 3\Assets\_Project\Scripts\Generated\TheBlueWay\SaveHandlers\Unity.InputSystem\DevTestCustomDatas\UnityEngine\InputSystem\Users\InputUserCustomSaveData.cs
+    Name: _Project\Scripts\Generated\TheBlueWay\SaveHandlers\Unity.InputSystem\DevTestCustomDatas\UnityEngine\InputSystem\Users\InputUserCustomSaveData.cs
+  - ChangeType: 4
+    FullPath: D:\Unity Projects\Unity Tanks! 3\Assets\_Project\Scripts\Generated\TheBlueWay\SaveHandlers\UnityEngine.CoreModule\DevTest\UnityEngine\RectTransformSaveHandler.cs
+    Name: _Project\Scripts\Generated\TheBlueWay\SaveHandlers\UnityEngine.CoreModule\DevTest\UnityEngine\RectTransformSaveHandler.cs
+  - ChangeType: 4
+    FullPath: D:\Unity Projects\Unity Tanks! 3\Assets\_Project\Scripts\Generated\TheBlueWay\SaveHandlers\UnityEngine.CoreModule\DevTest\UnityEngine\RendererSaveHandler.cs
+    Name: _Project\Scripts\Generated\TheBlueWay\SaveHandlers\UnityEngine.CoreModule\DevTest\UnityEngine\RendererSaveHandler.cs
+  - ChangeType: 4
+    FullPath: D:\Unity Projects\Unity Tanks! 3\Assets\_Project\Scripts\Generated\TheBlueWay\SaveHandlers\UnityEngine.CoreModule\DevTest\UnityEngine\TextureSaveHandler.cs
+    Name: _Project\Scripts\Generated\TheBlueWay\SaveHandlers\UnityEngine.CoreModule\DevTest\UnityEngine\TextureSaveHandler.cs
+  - ChangeType: 4
+    FullPath: D:\Unity Projects\Unity Tanks! 3\Assets\_Project\Scripts\Generated\TheBlueWay\SaveHandlers\UnityEngine.CoreModule\DevTest\UnityEngine\Texture2DSaveHandler.cs
+    Name: _Project\Scripts\Generated\TheBlueWay\SaveHandlers\UnityEngine.CoreModule\DevTest\UnityEngine\Texture2DSaveHandler.cs
+  _selectedIndices: 0000000009000000
   _userSettings: {fileID: 11400000, guid: 8b67b65e7aed92246b93ac4b59be0137, type: 2}
   _selectedFolderToScan: _Tanks
-  _forceGenerateHandlersOfTypeGenConfigs: 1
+  _forceGenerateHandlersOfTypeGenConfigs: 0

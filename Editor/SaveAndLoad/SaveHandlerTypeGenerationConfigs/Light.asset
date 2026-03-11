@@ -42,3 +42,36 @@ MonoBehaviour:
       directive: UNITY_EDITOR
       methodId: 753274258273944770
     logContext: {fileID: 11400000}
+  _config:
+    _typeInterfaceId: 346879394327146699
+    _displayTypeName: Light | UnityEngine.CoreModule | UnityEngine
+    __lastKnownTypeInterfaceId: 346879394327146699
+    __lastKnownTypeName: UnityEngine.Light, UnityEngine.CoreModule
+    _memberConfigs:
+    - memberName: RemoveCommandBuffers(UnityEngine.CoreModule UnityEngine.Rendering.LightEvent):mscorlib
+        System.Void
+      _memberIndex: 0
+      inclusionMode: 0
+      directive: UNITY_EDITOR
+      _typeInterfaceId: 346879394327146699
+    - memberName: SetLightDirty():mscorlib System.Void
+      _memberIndex: 1
+      inclusionMode: 0
+      directive: UNITY_EDITOR
+      _typeInterfaceId: 346879394327146699
+    - memberName: shadowRadius
+      _memberIndex: 5
+      inclusionMode: 1
+      directive: 
+      _typeInterfaceId: 346879394327146699
+    - memberName: shadowAngle
+      _memberIndex: 6
+      inclusionMode: 1
+      directive: 
+      _typeInterfaceId: 346879394327146699
+    - memberName: lightmapBakeType
+      _memberIndex: 7
+      inclusionMode: 1
+      directive: 
+      _typeInterfaceId: 346879394327146699
+  _triggerSaveHandlerRegeneration: 0

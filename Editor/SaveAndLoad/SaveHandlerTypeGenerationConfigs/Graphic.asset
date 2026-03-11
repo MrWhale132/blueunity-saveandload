@@ -35,15 +35,6 @@ MonoBehaviour:
     - memberName: OnRebuildRequested():mscorlib System.Void
       _memberIndex: 0
       inclusionMode: 0
-      directive: 
+      directive: UNITY_EDITOR
       _typeInterfaceId: 280351672890743277
-    - memberName: runInEditMode
-      _memberIndex: 0
-      inclusionMode: 0
-      directive: 
-      _typeInterfaceId: 280351672890743277
-    - memberName: OnRebuildRequested():mscorlib System.Void
-      _memberIndex: 1
-      inclusionMode: 0
-      directive: 
-      _typeInterfaceId: 280351672890743277
+  _triggerSaveHandlerRegeneration: 0

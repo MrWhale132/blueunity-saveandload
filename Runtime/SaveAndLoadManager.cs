@@ -2,9 +2,9 @@ using Assets._Project.Scripts.Infrastructure;
 using Assets._Project.Scripts.Infrastructure.AddressableInfra;
 using Assets._Project.Scripts.SaveAndLoad.SaveHandlerBases;
 using Assets._Project.Scripts.UtilScripts;
-using Assets._Project.Scripts.UtilScripts.CodeGen;
 using Assets._Project.Scripts.UtilScripts.Extensions;
 using Newtonsoft.Json;
+using Theblueway.Core.Runtime.Extensions;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -1642,26 +1642,42 @@ namespace Assets._Project.Scripts.SaveAndLoad
 
             public long GetHandlerIdByHandledType(Type handledType, bool isStatic)
             {
+                return GetHandlerIdByHandledType(handledType, isStatic, out var _);
+            }
+
+            public long GetHandlerIdByHandledType(Type handledType, bool isStatic, out bool found)
+            {
                 InitServiceIfNeeded();
+
+                if (handledType == null)
+                {
+                    found = false;
+                    return default;
+                };
+
 
                 if (isStatic)
                 {
                     if (__staticSaveHandlerAttributesByHandledType.TryGetValue(handledType, out var attr2))
                     {
+                        found = true;
                         return attr2.Id;
                     }
                     else
                     {
+                        found = false;
                         return default;
                     }
                 }
 
                 if (__saveHandlerAttributesByHandledType.TryGetValue(handledType, out var attr))
                 {
+                    found = true;
                     return attr.Id;
                 }
                 else
                 {
+                    found = false;
                     return default;
                 }
             }

@@ -7,8 +7,9 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
+using Theblueway.CodeGen.Runtime;
+using Theblueway.Core.Runtime.Extensions;
 using Theblueway.Core.Runtime.Packages.com.blueutils.core.Runtime.ScriptResources;
-using UnityEditor;
 using UnityEngine;
 
 [CreateAssetMenu(fileName = "SaveAndLoadCodeGenSettings", menuName = "Scriptable Objects/SaveAndLoad/SaveAndLoadCodeGenSettings")]

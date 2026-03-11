@@ -16,7 +16,7 @@ MonoBehaviour:
   GenerateExampleSaveHandlersForManuallyHandledTypesToo: 0
   IgnoreAnyObsolete: 1
   GenerateSaveHandlersAsNestedClassesInsideHandledType: 1
-  ForceGenerateForUnchangedTypesToo: 0
+  ForceGenerateForUnchangedTypesToo: 1
   TypeDiscoverySettings:
     IgnoreAllDependencyTypes: 1
   PrefabFolderPaths:

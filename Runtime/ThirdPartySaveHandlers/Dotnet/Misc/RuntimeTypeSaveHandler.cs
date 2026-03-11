@@ -1,7 +1,7 @@
 ﻿
 using Assets._Project.Scripts.Infrastructure;
 using Assets._Project.Scripts.SaveAndLoad.SaveHandlerBases;
-using Assets._Project.Scripts.UtilScripts.CodeGen;
+using Theblueway.Core.Runtime.Extensions;
 using System;
 using System.Reflection;
 using UnityEngine;

@@ -10,7 +10,7 @@ namespace Packages.com.theblueway.saveandload.Editor.SaveAndLoad
 {
     public class SaveHandlerTypeGenerationSettingsRegistry
     {
-        public Dictionary<long, List<SaveHandlerTypeGenerationConfig>> _foundTypeGenConfigsByHandlerId = new();
+        public Dictionary<long, List<SaveHandlerTypeGenerationConfiguration>> _foundTypeGenConfigurationsByHandlerId = new();
         public Dictionary<long, SaveHandlerTypeGenerationSettings> _typeGenerationSettingsByHandlerId = new();
         public bool _isBuilt = false;
 
@@ -25,18 +25,16 @@ namespace Packages.com.theblueway.saveandload.Editor.SaveAndLoad
             {
                 if (isStatic)
                 {
-                    if (_foundTypeGenConfigsByHandlerId.TryGetValue(handlerId, out var configs))
+                    if (_foundTypeGenConfigurationsByHandlerId.TryGetValue(handlerId, out var configs))
                     {
-                        var settings_ = new SaveHandlerTypeGenerationSettings(configs);
-                        if (settings_.IsValid(true))
-                        {
-                            _typeGenerationSettingsByHandlerId.Add(handlerId, settings_);
-                        }
+                        var settings_ = SaveHandlerTypeGenerationSettings.From(configs);
+
+                        _typeGenerationSettingsByHandlerId.Add(handlerId, settings_);
                     }
                 }
                 else
                 {
-                    List<SaveHandlerTypeGenerationConfig> configs = new();
+                    List<SaveHandlerTypeGenerationConfiguration> configs = new();
 
                     Type current = handledType;
 
@@ -44,7 +42,7 @@ namespace Packages.com.theblueway.saveandload.Editor.SaveAndLoad
                     {
                         var id = SaveAndLoadManager.Service.GetHandlerIdByHandledType(current, false);
 
-                        if (_foundTypeGenConfigsByHandlerId.TryGetValue(id, out var configsForCurrentType))
+                        if (_foundTypeGenConfigurationsByHandlerId.TryGetValue(id, out var configsForCurrentType))
                         {
                             configs.AddRange(configsForCurrentType);
                         }
@@ -54,16 +52,15 @@ namespace Packages.com.theblueway.saveandload.Editor.SaveAndLoad
 
                     if (configs.Count > 0)
                     {
-                        var settings_ = new SaveHandlerTypeGenerationSettings(configs);
-                        if (settings_.IsValid(true))
-                        {
-                            _typeGenerationSettingsByHandlerId.Add(handlerId, settings_);
-                        }
+                        var settings_ = SaveHandlerTypeGenerationSettings.From(configs);
+
+                        _typeGenerationSettingsByHandlerId.Add(handlerId, settings_);
                     }
                 }
             }
 
             return _typeGenerationSettingsByHandlerId.TryGetValue(handlerId, out settings);
+
         }
 
 
@@ -71,44 +68,50 @@ namespace Packages.com.theblueway.saveandload.Editor.SaveAndLoad
         {
             if (_isBuilt) return;
 
-            _foundTypeGenConfigsByHandlerId.Clear();
+            _foundTypeGenConfigurationsByHandlerId.Clear();
             _typeGenerationSettingsByHandlerId.Clear();
 
 
             var typeGenConfigSOs = GatherAllScriptableConfigs();
 
-            var byHandlerId = typeGenConfigSOs
-                .GroupBy(so => so.config.handlerIdOfConfiguredType)
-                .ToDictionary(g => g.Key, g => g.ToList());
+            var byHandlerId = new Dictionary<long, List<SaveHandlerTypeGenerationConfiguration>>();
 
-
-
-            foreach ((var id, var configs) in byHandlerId)
+            foreach (var so in typeGenConfigSOs)
             {
-                var validOnes = new List<SaveHandlerTypeGenerationConfig>();
-
-                foreach (var configSO in configs)
+                void Add(SaveHandlerTypeGenerationConfiguration config, bool isStatic)
                 {
-                    if (configSO.config.IsValid(true, configSO))
+                    var handlerId = SaveAndLoadManager.Service.GetHandlerIdByHandledType(config.ConfiguredType, isStatic: isStatic, out bool found);
+
+                    if (found)
                     {
-                        validOnes.Add(configSO.config);
+                        if (!byHandlerId.ContainsKey(handlerId))
+                        {
+                            byHandlerId.Add(handlerId, new List<SaveHandlerTypeGenerationConfiguration>());
+                        }
+                        byHandlerId[handlerId].Add(config);
                     }
                 }
 
-                if (validOnes.Count > 0)
-                {
-                    _foundTypeGenConfigsByHandlerId.Add(id, validOnes);
-                }
+                Add(so._config, false);
+                Add(so._config, true);
             }
+
+            _foundTypeGenConfigurationsByHandlerId = byHandlerId;
+
 
             _isBuilt = true;
         }
 
 
+
+
+
+
+
+
         public void CacheInvalidate()
         {
             _isBuilt = false;
-            _foundTypeGenConfigsByHandlerId.Clear();
             _typeGenerationSettingsByHandlerId.Clear();
         }
 

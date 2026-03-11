@@ -1,12 +1,13 @@
 ﻿using Assets._Project.Scripts.Infrastructure;
 using Assets._Project.Scripts.SaveAndLoad.SavableDelegates;
 using Assets._Project.Scripts.UtilScripts;
-using Assets._Project.Scripts.UtilScripts.CodeGen;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
 using Theblueway.Core.Runtime;
+using Theblueway.Core.Runtime.Extensions;
+using Theblueway.CodeGen.Runtime;
 using Theblueway.SaveAndLoad.Packages.com.theblueway.saveandload.Runtime;
 using UnityEngine;
 
@@ -588,7 +589,7 @@ namespace Assets._Project.Scripts.SaveAndLoad
                     try
                     {
                         var obj = jobject[nameof(Data<int>._Value)]!.ToObject(handledType, serializer);
-
+                        
                         if ((handledType.IsStruct() || handledType.IsClass) && handledType != typeof(string) && isMigrating)
                         {
                             result._migratedUnderlyingObject = obj;

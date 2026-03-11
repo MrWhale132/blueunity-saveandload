@@ -3,8 +3,8 @@
     "rootNamespace": "Theblueway.SaveAndLoad.Runtime",
     "references": [
         "GUID:11f9f0384cd82b14ea5d004a22a3f210",
-        "GUID:afb50bebb3c21a74c9b64e57ab3c8268",
-        "GUID:860726a4ae098c0418bd10e8cf4cd9fe",
+        "GUID:868b241af02c2d64d888ee6d2df251d9",
+        "GUID:e5502f6ef6571ba4ea9fd935ff8c576d",
         "GUID:688ce7ba18e5e88488c6bee6dc5bc567",
         "GUID:84651a3751eca9349aac36a66bba901b",
         "GUID:6055be8ebefd69e48b49212b09b47b2f",

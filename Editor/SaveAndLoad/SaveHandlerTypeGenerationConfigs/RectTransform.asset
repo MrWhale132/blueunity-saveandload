@@ -10,7 +10,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 46ae51ed033b10f41afc2458114b99c9, type: 3}
-  m_Name: RectTransform Static
+  m_Name: RectTransform
   m_EditorClassIdentifier: 
   config:
     _triggerValidate: 0
@@ -26,3 +26,15 @@ MonoBehaviour:
       directive: 
       methodId: 0
     logContext: {fileID: 11400000}
+  _config:
+    _typeInterfaceId: 746022504230144684
+    _displayTypeName: RectTransform | UnityEngine.CoreModule | UnityEngine
+    __lastKnownTypeInterfaceId: 746022504230144684
+    __lastKnownTypeName: UnityEngine.RectTransform, UnityEngine.CoreModule
+    _memberConfigs:
+    - memberName: reapplyDrivenProperties
+      _memberIndex: 0
+      inclusionMode: 1
+      directive: 
+      _typeInterfaceId: 746022504230144684
+  _triggerSaveHandlerRegeneration: 0

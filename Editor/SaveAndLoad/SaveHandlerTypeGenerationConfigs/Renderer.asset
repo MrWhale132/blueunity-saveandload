@@ -30,3 +30,20 @@ MonoBehaviour:
       directive: 
       methodId: 0
     logContext: {fileID: 11400000}
+  _config:
+    _typeInterfaceId: 955885696226906640
+    _displayTypeName: Renderer | UnityEngine.CoreModule | UnityEngine
+    __lastKnownTypeInterfaceId: 955885696226906640
+    __lastKnownTypeName: UnityEngine.Renderer, UnityEngine.CoreModule
+    _memberConfigs:
+    - memberName: bounds
+      _memberIndex: 0
+      inclusionMode: 1
+      directive: 
+      _typeInterfaceId: 955885696226906640
+    - memberName: localBounds
+      _memberIndex: 1
+      inclusionMode: 1
+      directive: 
+      _typeInterfaceId: 955885696226906640
+  _triggerSaveHandlerRegeneration: 0

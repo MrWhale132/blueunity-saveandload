@@ -1,0 +1,70 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 46ae51ed033b10f41afc2458114b99c9, type: 3}
+  m_Name: AudioSource
+  m_EditorClassIdentifier: 
+  config:
+    _triggerValidate: 0
+    handlerIdOfConfiguredType: 0
+    _configuredTypeState: 0
+    _lastKnownHandlerIdOfConfiguredType: 0
+    _lastKnownTypeNameOfConfiguredType: 
+    _wasStatic: 0
+    _loadOrder: 0
+    memberConfigs: []
+    logContext: {fileID: 11400000}
+  _config:
+    _typeInterfaceId: 111945637836243288
+    _displayTypeName: AudioSource | UnityEngine.AudioModule | UnityEngine
+    __lastKnownTypeInterfaceId: 111945637836243288
+    __lastKnownTypeName: UnityEngine.AudioSource, UnityEngine.AudioModule
+    _memberConfigs:
+    - memberName: gamepadSpeakerOutputType
+      _memberIndex: 0
+      inclusionMode: 0
+      directive: UNITY_EDITOR
+      _typeInterfaceId: 111945637836243288
+    - memberName: GamepadSpeakerSupportsOutputType(UnityEngine.AudioModule UnityEngine.GamepadSpeakerOutputType):mscorlib
+        System.Boolean
+      _memberIndex: 1
+      inclusionMode: 0
+      directive: UNITY_EDITOR
+      _typeInterfaceId: 111945637836243288
+    - memberName: PlayOnGamepad(mscorlib System.Int32):mscorlib System.Boolean
+      _memberIndex: 2
+      inclusionMode: 0
+      directive: UNITY_EDITOR
+      _typeInterfaceId: 111945637836243288
+    - memberName: DisableGamepadOutput():mscorlib System.Boolean
+      _memberIndex: 3
+      inclusionMode: 0
+      directive: UNITY_EDITOR
+      _typeInterfaceId: 111945637836243288
+    - memberName: SetGamepadSpeakerMixLevel(mscorlib System.Int32,mscorlib System.Int32):mscorlib
+        System.Boolean
+      _memberIndex: 4
+      inclusionMode: 0
+      directive: UNITY_EDITOR
+      _typeInterfaceId: 111945637836243288
+    - memberName: SetGamepadSpeakerMixLevelDefault(mscorlib System.Int32):mscorlib
+        System.Boolean
+      _memberIndex: 5
+      inclusionMode: 0
+      directive: UNITY_EDITOR
+      _typeInterfaceId: 111945637836243288
+    - memberName: SetGamepadSpeakerRestrictedAudio(mscorlib System.Int32,mscorlib
+        System.Boolean):mscorlib System.Boolean
+      _memberIndex: 6
+      inclusionMode: 0
+      directive: UNITY_EDITOR
+      _typeInterfaceId: 111945637836243288
+  _triggerSaveHandlerRegeneration: 0
