@@ -16,7 +16,8 @@ MonoBehaviour:
   GenerateExampleSaveHandlersForManuallyHandledTypesToo: 0
   IgnoreAnyObsolete: 1
   GenerateSaveHandlersAsNestedClassesInsideHandledType: 1
-  ForceGenerateForUnchangedTypesToo: 1
+  ForceGenerateForUnchangedTypesToo: 0
+  FolderPathForGeneratedCode: Assets/_Project/Scripts/Generated
   TypeDiscoverySettings:
     IgnoreAllDependencyTypes: 1
   PrefabFolderPaths:

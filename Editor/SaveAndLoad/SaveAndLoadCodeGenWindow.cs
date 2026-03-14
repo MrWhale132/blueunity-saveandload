@@ -1,4 +1,3 @@
-using Assets._Project.Scripts.Infrastructure;
 using Assets._Project.Scripts.SaveAndLoad;
 using Assets._Project.Scripts.SaveAndLoad.Editor;
 using Assets._Project.Scripts.UtilScripts.CodeGen;
@@ -18,6 +17,7 @@ using Theblueway.CodeGen.Runtime;
 using Theblueway.Core.Runtime.Extensions;
 using Theblueway.Core.Runtime.Packages.com.blueutils.core.Runtime.Debugging.Logging;
 using Theblueway.SaveAndLoad.Editor;
+using Theblueway.Tools.Editor;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
@@ -266,11 +266,11 @@ public class SaveAndLoadCodeGenWindow : EditorWindow
 
         EditorGUILayout.Space(40);
 
-        _state._forceGenerateHandlersOfTypeGenConfigs = GUILayout.Toggle(_state._forceGenerateHandlersOfTypeGenConfigs,"Force regen handlers of typegen configs");
+        _state._forceGenerateHandlersOfTypeGenConfigs = GUILayout.Toggle(_state._forceGenerateHandlersOfTypeGenConfigs, "Force regen handlers of typegen configs");
 
-        if(GUILayout.Button("Ensure typegen configs"))
+        if (GUILayout.Button("Ensure typegen configs"))
         {
-            EnsureTypeGenConfigs(forceRegenerate:_state._forceGenerateHandlersOfTypeGenConfigs);
+            EnsureTypeGenConfigs(forceRegenerate: _state._forceGenerateHandlersOfTypeGenConfigs);
         }
 
         EditorGUILayout.EndVertical();
@@ -587,29 +587,11 @@ public class SaveAndLoadCodeGenWindow : EditorWindow
     }
 
 
-    IEnumerable<string> GetCsFiles(string root) => _service.GetCsFiles(root);
+    IEnumerable<string> GetCsFiles(string root) => BlueTools.GetCsFiles(root);
 
 
     public class Service
     {
-        public IEnumerable<string> GetCsFiles(string root)
-        {
-
-            foreach (var file in Directory.EnumerateFiles(root, "*.cs"))
-                yield return file;
-
-            foreach (var dir in Directory.EnumerateDirectories(root))
-            {
-                var name = Path.GetFileName(dir);
-                if (name.EndsWith("~")) continue; // skip ignored
-
-                foreach (var file in Directory.EnumerateFiles(dir, "*.cs"))
-                    yield return file;
-
-                foreach (var subFile in GetCsFiles(dir))
-                    yield return subFile;
-            }
-        }
     }
 
 
@@ -734,7 +716,7 @@ public class SaveAndLoadCodeGenWindow : EditorWindow
         var inspectionReport = Roslyn.CodeGen.InspectCodeFile(filePath);
 
 
-        var assemblyName = AssemblyResolver.ResolveAssembly(filePath);
+        var assemblyName = AssemblyTools.ResolveAssembly(filePath);
 
 
         foreach (var typeReport in inspectionReport.TypeReports)
@@ -933,7 +915,7 @@ public class SaveAndLoadCodeGenWindow : EditorWindow
 
         foreach (var type in typesToHandle)
         {
-            if(type == null)
+            if (type == null)
             {
                 Debug.LogWarning("Found null reference in codegeneration logic. Please do not send null references for codegen.");
                 continue;
@@ -1275,7 +1257,7 @@ public class SaveAndLoadCodeGenWindow : EditorWindow
                         }
                     }
 
-                    foreach(var method in methods)
+                    foreach (var method in methods)
                     {
                         if (settings.HasInclusionModeFor(method, out var inclusionMode))
                         {
@@ -1293,7 +1275,8 @@ public class SaveAndLoadCodeGenWindow : EditorWindow
                     FieldsReport = fieldsReport,
                     Properties = properties,
                     Events = events,
-                    Methods = methods
+                    Methods = methods,
+                    IsStatic = isStatic,
                 };
 
                 return typeReport;
@@ -1304,7 +1287,7 @@ public class SaveAndLoadCodeGenWindow : EditorWindow
 
             var binding = BindingFlags.Public | BindingFlags.Static;
 
-            if (_userSettings.GenerateSaveHandlersAsNestedClassesInsideHandledType && session.HasEditableSourceFile(type))
+            if (_userSettings.GenerateSaveHandlersAsNestedClassesInsideHandledType && BlueTools.HasEditableSourceFile(type))
             {
                 binding |= BindingFlags.NonPublic;
             }
@@ -1323,20 +1306,20 @@ public class SaveAndLoadCodeGenWindow : EditorWindow
                 var staticReport = typeReport;
 
 
-                bool hasNoTypeGenSettings = !session.TypeGenerationSettingsRegistry.HasSettingsForHandledType(type,isStatic:true, out var _);
+                bool hasNoTypeGenSettings = !session.TypeGenerationSettingsRegistry.HasSettingsForHandledType(type, isStatic: true, out var _);
 
 
                 //doc:
                 //we dont generate static handler if there is no static member of the handled type to reduce clutter and unnecessary types
                 //however, it is possible that the typegen configs specified for the type exclude all members
-                //there is a reason the user created a config for this type, so we interpet it as an enforcement
-                if (hasNoTypeGenSettings 
+                //we assume there is a reason the user created a config for this type, so we interpet it as an enforcement
+                if (hasNoTypeGenSettings
                     && staticReport.FieldsReport.ValidFields.Count == 0
                     && staticReport.Properties.Count() == 0
                     && staticReport.Events.Count() == 0
                     && staticReport.Methods.Count == 0)
                 {
-                    //if there is no static members, dont generate a static handler
+                    //if there is no static members, do not generate a static handler
                     instanceReport.StaticReport = null;
                 }
                 else
@@ -1412,6 +1395,83 @@ public class SaveAndLoadCodeGenWindow : EditorWindow
 
 
 
+        Dictionary<Type, TypeReport> validatedTypes = new();
+
+        {
+            foreach ((var type, var discoveryReport) in discoveredTypes)
+            {
+                bool Validate(Type type, bool isStatic, TypeReport typeReport)
+                {
+
+                    if (_saveAndLoadService.IsTypeHandled_Editor(type, isStatic)
+                     && !_saveAndLoadService.IsTypeManuallyHandled_Editor(type, isStatic))
+                    {
+                        var handlerType = _saveAndLoadService.GetSaveHandlerTypeFrom(type, isStatic);
+
+                        var existingMethodSignatureToIdMap = SaveAndLoadCodeInspection.GetMethodSignatureToMethodIdMap(type, isStatic: isStatic, handlerType);
+                        //Debug.Log(typeReport.Methods.ToString());
+                        HashSet<string> currentMethodSignatures = typeReport.Methods.Select(m => TypeUtils.GetMethodSignature(m)).ToHashSet();
+
+                        Dictionary<string, long> invalidMethodSignatures = new();
+
+                        foreach (var (signature, id) in existingMethodSignatureToIdMap)
+                        {
+                            if (!currentMethodSignatures.Contains(signature))
+                            {
+                                invalidMethodSignatures.Add(signature, id);
+                            }
+                        }
+
+
+                        if (invalidMethodSignatures.Count > 0)
+                        {
+                            var handlerId = _saveAndLoadService.GetSaveHandlerAttributeOfType_Editor(type, isStatic).Id;
+
+                            var invalidList = invalidMethodSignatures.Select(x => x.Key + " " + x.Value).StringJoin("\n");
+                            var currentList = currentMethodSignatures.StringJoin("\n");
+
+                            string staticText = isStatic ? "(static) " : "";
+
+                            Debug.LogError($"SaveHandler with id {handlerId} for target type: {staticText}{type.FullName} has method signature entries that does no match any of the currently existing methods of target type. " +
+                                $"This will cause runtime errors because the handler will not be able to find the methods in the type. " +
+                                $"This can happen when you modify a method but does not update its methodsignature map. " +
+                                $"You can fix this by manually updating the method signature map with the correct method signatures provided below. " +
+                                $"Removing these entries and letting new ones be generated will result in that previous saves wont be able " +
+                                $"to find these methods as the methodids they serialized will no longer exist on next load. " +
+                                $"\n\nInvalid method signatures:\n{invalidList}\n\nCurrent method signatures:\n{currentList}\n");
+
+                            return false;
+                        }
+                        else return true;
+                    }
+                    else return true;
+                }
+
+                if (discoveryReport.IsStatic)
+                {
+                    if (Validate(type, isStatic: true, discoveryReport))
+                    {
+                        validatedTypes.Add(type, discoveryReport);
+                    }
+                }
+                else
+                {
+                    if (discoveryReport.HasStaticReport && !Validate(type, isStatic: true, discoveryReport.StaticReport))
+                    {
+                        discoveryReport.StaticReport = null;
+                    }
+
+                    if (Validate(type, isStatic: false, discoveryReport))
+                    {
+                        validatedTypes.Add(type, discoveryReport);
+                    }
+                    else if (discoveryReport.HasStaticReport) validatedTypes.Add(type, discoveryReport.StaticReport);
+                }
+            }
+        }
+
+
+
 
 
 
@@ -1430,7 +1490,7 @@ public class SaveAndLoadCodeGenWindow : EditorWindow
 
         List<(Type type, CodeGenerationResult generationResult)> typesAndTheirgenerationResults = new();
 
-        foreach ((var type, var report) in discoveredTypes)
+        foreach ((var type, var report) in validatedTypes)
         {
             var generationResult = codeGenerator.GenerateSaveAndLoadCode(report, session);
             typesAndTheirgenerationResults.Add((type, generationResult));
@@ -1524,7 +1584,7 @@ public class SaveAndLoadCodeGenWindow : EditorWindow
                 string fileContent;
 
 
-                if (_userSettings.GenerateSaveHandlersAsNestedClassesInsideHandledType && session.HasEditableSourceFile(type, out var path))
+                if (_userSettings.GenerateSaveHandlersAsNestedClassesInsideHandledType && BlueTools.HasEditableSourceFile(type, out var path))
                 {
                     using var reader = File.OpenText(path);
                     string originalSource = reader.ReadToEnd();
@@ -1655,9 +1715,9 @@ public class SaveAndLoadCodeGenWindow : EditorWindow
                     }
                     else //insert code at the end of the class
                     {
-                        void UpdateTargetTypesAsmDefFileWithSaveAndLoadPhase1()
+                        void UpdateTargetTypesAsmDefFileWithSaveAndLoadReferencies()
                         {
-                            if (session.HasAsmDefFile(path, out var asmdefPath))
+                            if (BlueTools.HasAsmDefFile(path, out var asmdefPath))
                             {
                                 var guidReferencesToAdd = new List<string>
                                 {
@@ -1727,7 +1787,7 @@ public class SaveAndLoadCodeGenWindow : EditorWindow
                             }
                         }
 
-                        UpdateTargetTypesAsmDefFileWithSaveAndLoadPhase1();
+                        UpdateTargetTypesAsmDefFileWithSaveAndLoadReferencies();
 
 
                         var combined = CodeGenUtils.InsertNestedTypeIntoTargetType(type, originalSource, generatedTypeText);
@@ -1771,7 +1831,7 @@ public class SaveAndLoadCodeGenWindow : EditorWindow
                     path = "";//otherwise error: path is unassigned
 
                     bool hasExistingNotManualHandler = handlerTypeToLookFor != null;
-                    bool canEditItsSourceFile = hasExistingNotManualHandler && session.HasEditableSourceFile(handlerTypeToLookFor, out path);
+                    bool canEditItsSourceFile = hasExistingNotManualHandler && BlueTools.HasEditableSourceFile(handlerTypeToLookFor, out path);
                     //todo: stronger validation for this logic. Examine if the source file contains only the expected handler type
                     bool fileContainsOnlyGeneratedCode = hasExistingNotManualHandler && Path.GetFileName(path) == fileName; //save to override as is
 
@@ -1809,12 +1869,13 @@ public class SaveAndLoadCodeGenWindow : EditorWindow
                     {
                         var namespaceAsPath = type.Namespace != null ? type.Namespace.Replace(".", "/") : "";
 
-                        string assemblysFolder = $"_Project/Scripts/Generated/TheBlueWay/SaveHandlers/" +
-                                                 $"{type.Assembly.GetName().Name}";
+                        string assemblyFolder = Path.Combine(_userSettings.FolderPathForGeneratedCode,
+                                                    "TheBlueWay/SaveHandlers",
+                                                 $"{type.Assembly.GetName().Name}");
 
                         //todo: configurable path
-                        string relativeDirPath = assemblysFolder + "/" +
-                                                 $"{(type.IsStruct() ? "DevTestCustomDatas" : "DevTest")}/" +
+                        string relativeDirPath = assemblyFolder + "/" +
+                                                 $"{(type.IsStruct() ? "CustomSaveDatas" : "SaveHandlers")}/" +
                                                  $"{namespaceAsPath}";
 
 
@@ -1839,7 +1900,7 @@ public class SaveAndLoadCodeGenWindow : EditorWindow
                                     "GUID:11f9f0384cd82b14ea5d004a22a3f210", //BlueUtils.Core
                                 };
 
-                            var list = AssemblyResolver.GetAsmdefReferences(type.Assembly);
+                            var list = AssemblyTools.GetAsmdefReferences(type.Assembly);
                             referencedAssmeblies.AddRange(list);
 
                             string references = "\"" + string.Join("\"," + Environment.NewLine + "\"", referencedAssmeblies) + "\"";
@@ -1867,7 +1928,7 @@ public class SaveAndLoadCodeGenWindow : EditorWindow
 
                             string asmDefFileName = type.Assembly.GetName().Name + ".Generated.asmdef";
 
-                            var asmdefPath = Path.Combine(Application.dataPath, assemblysFolder, asmDefFileName);
+                            var asmdefPath = Path.Combine(Application.dataPath, assemblyFolder, asmDefFileName);
 
                             File.WriteAllText(asmdefPath, asmdefFileContent);
                         }
@@ -1941,120 +2002,8 @@ public class SaveAndLoadCodeGenWindow : EditorWindow
     {
         SaveAndLoadCodeGenWindow.Service _service = new();
 
-        public Dictionary<Type, string> _typeToSourceFilePath = new();
-
-
         public SaveAndLoadCodeGenSettings UserSettings { get; set; }
         public SaveHandlerTypeGenerationSettingsRegistry TypeGenerationSettingsRegistry { get; } = new();
-
-
-
-        public bool HasAsmDefFile(string path, out string asmdefPath)
-        {
-            var dir = Path.GetDirectoryName(path);
-
-            var files = Directory.GetFiles(dir, "*.asmdef", SearchOption.TopDirectoryOnly);
-
-            if (files.Length > 0)
-            {
-                asmdefPath = files[0];
-                return true;
-            }
-
-            asmdefPath = null;
-            return false;
-        }
-
-
-
-        public bool HasEditableSourceFile(Type type) => HasEditableSourceFile(type, out _);
-
-        public bool HasEditableSourceFile(Type type, out string path)
-        {
-            if (_typeToSourceFilePath.TryGetValue(type, out path))
-            {
-                return path != null;
-            }
-
-            path = GetSourceFilePath(type);
-
-            return path != null;
-        }
-
-
-        //todo: the "Get" logic should be in a utility class, not here. The caching can stay
-        public string GetSourceFilePath(Type type)
-        {
-            if (_typeToSourceFilePath.TryGetValue(type, out var path))
-            {
-                return path;
-            }
-
-            var asm = type.Assembly;
-
-            var dirsToLookIn = new List<string>();
-
-            if (asm.GetName().Name == "Assembly-CSharp")
-            {
-                dirsToLookIn.Add(Application.dataPath);
-            }
-            else
-            {
-                var asmdDef = AssemblyResolver.GetAsdmDefInfoInDirs(asm, AssemblyResolver.EditableSourceFilesDirs);
-
-                if (asmdDef == null) return null;
-
-                dirsToLookIn.AddRange(asmdDef.OwnedDirectories);
-            }
-
-
-            var name = type.QualifiedName();
-
-
-            foreach (var dir in dirsToLookIn)
-            {
-                var csFiles = _service.GetCsFiles(dir);
-
-                foreach (var csPath in csFiles)
-                {
-                    var inspectionReport = Roslyn.CodeGen.InspectCodeFile(csPath);
-
-
-                    bool found = false;
-
-                    foreach (var report in inspectionReport.TypeReports)
-                    {
-
-                        //debug
-                        //if (report.TypeName.Contains("GenZSa") && type.Name.Contains("GenZSa"))
-                        //{
-
-                        //}
-
-                        if (report.Namespace == type.Namespace && report.TypeName == name)
-                        {
-                            found = true;
-                            break;
-                        }
-                    }
-
-                    //debug
-                    //if (csPath.Contains("Z.cs"))
-                    //{
-
-                    //}
-
-                    if (found)
-                    {
-                        _typeToSourceFilePath[type] = csPath;
-                        return csPath;
-                    }
-                }
-            }
-            Debug.LogError("didnt found source file for type: " + type.CleanAssemblyQualifiedName());
-            _typeToSourceFilePath[type] = null;
-            return null;
-        }
     }
 
 
@@ -2067,6 +2016,9 @@ public class SaveAndLoadCodeGenWindow : EditorWindow
         public List<TypeReport> TypeReports = new();
         public List<TypeReport> DependencyTypeReports = new();
     }
+
+
+
     public class TypeReport
     {
         public TypeReport StaticReport;
@@ -2075,6 +2027,9 @@ public class SaveAndLoadCodeGenWindow : EditorWindow
         public IEnumerable<PropertyInfo> Properties;
         public List<MethodInfo> Methods;
         public IEnumerable<EventInfo> Events;
+
+        public bool IsStatic { get; set; }
+        public bool HasStaticReport => StaticReport != null;
     }
 
     [Flags]

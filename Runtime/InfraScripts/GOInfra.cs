@@ -241,7 +241,7 @@ namespace Assets._Project.Scripts.Infrastructure
                             $"Going to ignore it and continue on.");
                         continue;
                     }
-                    
+
 
                     if (Infra.S.IsNotRegistered(memberDesc.member))
                     {
@@ -398,8 +398,8 @@ namespace Assets._Project.Scripts.Infrastructure
 
                     foreach (var memberDesc in InlinedPrefabDescription.members)
                     {
-                        if(added.Contains(memberDesc.memberId)) Debug.LogError("ERROR: Multiple members of a prefabdescription shares the same memberid." +
-                            $"MemberId: {memberDesc.memberId}, member name: {memberDesc.member.name}, GameObject name: {gameObject.name}",gameObject);
+                        if (added.Contains(memberDesc.memberId)) Debug.LogError("ERROR: Multiple members of a prefabdescription shares the same memberid." +
+                            $"MemberId: {memberDesc.memberId}, member name: {memberDesc.member.name}, GameObject name: {gameObject.name}", gameObject);
 
                         //this may add the same member multiple times but with different ids, which, theoretically, should not be a problem
                         //because it doesnt matter if a member has multiple ids as long as those ids point back to the same member
@@ -662,21 +662,19 @@ namespace Assets._Project.Scripts.Infrastructure
             List<Component> componentsToCheck = new();
 
 
+            void Traverse(Transform parent)
             {
-                void Traverse(Transform parent)
+                parent.GetComponents(helper);
+                componentsToCheck.AddRange(helper);
+
+                for (int i = 0; i < parent.childCount; i++)
                 {
-                    parent.GetComponents(helper);
-                    componentsToCheck.AddRange(helper);
-
-                    for (int i = 0; i < parent.childCount; i++)
-                    {
-                        var child = parent.GetChild(i);
-                        Traverse(child);
-                    }
+                    var child = parent.GetChild(i);
+                    Traverse(child);
                 }
-
-                Traverse(gameObject.transform);
             }
+
+            Traverse(gameObject.transform);
 
 
 

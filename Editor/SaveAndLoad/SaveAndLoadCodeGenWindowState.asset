@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 54a2635c244f50349864ad4a011d6c9c, type: 3}
   m_Name: SaveAndLoadCodeGenWindowState
   m_EditorClassIdentifier: 
-  _scrollPos: {x: 0, y: 33}
+  _scrollPos: {x: 0, y: 24}
   _eventqueue: []
   _changedFiles:
   - ChangeType: 4
@@ -69,7 +69,19 @@ MonoBehaviour:
   - ChangeType: 4
     FullPath: D:\Unity Projects\Unity Tanks! 3\Assets\_Project\Scripts\Generated\TheBlueWay\SaveHandlers\UnityEngine.CoreModule\DevTest\UnityEngine\Texture2DSaveHandler.cs
     Name: _Project\Scripts\Generated\TheBlueWay\SaveHandlers\UnityEngine.CoreModule\DevTest\UnityEngine\Texture2DSaveHandler.cs
-  _selectedIndices: 0000000009000000
+  - ChangeType: 1
+    FullPath: D:\Unity Projects\Unity Tanks! 3\Assets\Assets\_Project\Scripts\Generated\TheBlueWay\SaveHandlers\Assembly-CSharp\SaveHandlers\ZSaveHandler.cs
+    Name: Assets\_Project\Scripts\Generated\TheBlueWay\SaveHandlers\Assembly-CSharp\SaveHandlers\ZSaveHandler.cs
+  - ChangeType: 4
+    FullPath: D:\Unity Projects\Unity Tanks! 3\Assets\Assets\_Project\Scripts\Generated\TheBlueWay\SaveHandlers\Assembly-CSharp\SaveHandlers\ZSaveHandler.cs
+    Name: Assets\_Project\Scripts\Generated\TheBlueWay\SaveHandlers\Assembly-CSharp\SaveHandlers\ZSaveHandler.cs
+  - ChangeType: 1
+    FullPath: D:\Unity Projects\Unity Tanks! 3\Assets\_Project\Scripts\ZStaticTest.cs
+    Name: _Project\Scripts\ZStaticTest.cs
+  - ChangeType: 4
+    FullPath: D:\Unity Projects\Unity Tanks! 3\Assets\_Project\Scripts\ZStaticTest.cs
+    Name: _Project\Scripts\ZStaticTest.cs
+  _selectedIndices: 0600000009000000
   _userSettings: {fileID: 11400000, guid: 8b67b65e7aed92246b93ac4b59be0137, type: 2}
   _selectedFolderToScan: _Tanks
   _forceGenerateHandlersOfTypeGenConfigs: 0

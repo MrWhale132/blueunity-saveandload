@@ -89,6 +89,9 @@ public class SaveAndLoadCodeGenSettings : ScriptableObject
 
     public bool ForceGenerateForUnchangedTypesToo;
 
+    [Tooltip("This is where all generated code will be placed if generated as non-nested. The folder will be created if it doesn't exist.")]
+    public string FolderPathForGeneratedCode = "Assets/_Project/Scripts/Generated";
+
     public TypeDiscoverySettings TypeDiscoverySettings;
 
     [Tooltip("Paths should start from Assets folder, e.g.: Assets/path/to/my/dir")]

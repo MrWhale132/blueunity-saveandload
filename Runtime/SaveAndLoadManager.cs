@@ -1299,6 +1299,7 @@ namespace Assets._Project.Scripts.SaveAndLoad
                 if (HasSerializer_Editor(type))
                 {
                     hasManualInstanceHandler = true;
+                    return;
                 }
 
                 hasManualInstanceHandler = false;

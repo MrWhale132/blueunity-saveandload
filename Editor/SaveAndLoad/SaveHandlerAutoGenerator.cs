@@ -5,7 +5,6 @@ using Assets._Project.Scripts.SaveAndLoad.SaveHandlerBases;
 using Assets._Project.Scripts.UtilScripts;
 using Assets._Project.Scripts.UtilScripts.CodeGen;
 using Assets._Project.Scripts.UtilScripts.Extensions;
-using Packages.com.theblueway.saveandload.Editor.SaveAndLoad;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -674,74 +673,61 @@ public class SaveHandlerAutoGenerator : ScriptableObject
         var idToMethodLookUpLines = new Dictionary<MethodInfo, string>();
         var idToGenMethodDefLookUpLines = new Dictionary<MethodInfo, string>();
 
-        var existingMethodToIdMap = new Dictionary<string, long>();
-
-
-        var typeName = typeToHandle.Name;
-
-        if (typeToHandle.IsGenericType)
-        {
-            typeName = typeName.Substring(0, typeName.IndexOf('`'));
-            typeName += "{" + new string(',', typeToHandle.GetGenericArguments().Length - 1) + "}";
-        }
-
-
-        string text2 = isStatic ? "static " : "";
-
-        string tag = $"/// methodToId map for {text2}<see cref=\"{typeName}\"/>";
-
-
-
         var handlerType = _saveAndLoadService.GetSaveHandlerTypeFrom(typeToHandle, isStatic);
 
-        if (handlerType != null)
-        {
-            var savehandlerFilePath = session.GetSourceFilePath(handlerType);
-
-            var text = System.IO.File.ReadAllText(savehandlerFilePath);
+        var existingMethodToIdMap = SaveAndLoadCodeInspection.GetMethodSignatureToMethodIdMap(typeToHandle, isStatic, handlerType);
 
 
-            int tagStart = text.IndexOf(tag);
+        string tag = GenerateMethodSignatureToIdMapTag(typeToHandle, isStatic);
 
-            //todo: only for backward comp, remove later
-            if (tagStart != -1)
-            {
-                int dictionaryEntriesStart = tagStart + tag.Length + 1;
+        //if (handlerType != null)
+        //{
+        //    var savehandlerFilePath = BlueTools.GetSourceFilePath(handlerType);
 
-                int end = text.IndexOf("};", dictionaryEntriesStart);
+        //    var text = System.IO.File.ReadAllText(savehandlerFilePath);
 
-                string section = text.Substring(dictionaryEntriesStart, end - dictionaryEntriesStart);
 
-                var entries = section.Split(_NewLine, StringSplitOptions.RemoveEmptyEntries);
+        //    int tagStart = text.IndexOf(tag);
 
-                for (int i = 0; i < entries.Length - 1; i++)  //last line is the };
-                {
-                    var line = entries[i];
+        //    //todo: only for backward comp, remove later
+        //    if (tagStart != -1)
+        //    {
+        //        int dictionaryEntriesStart = tagStart + tag.Length + 1;
 
-                    if (line.Contains("#if") || line.Contains("#endif")) continue;
+        //        int end = text.IndexOf("};", dictionaryEntriesStart);
 
-                    int keyvalSep = line.IndexOfNth(',', -2);
-                    var start = line.IndexOf('\"') + 1;
-                    var length = keyvalSep - start - 1;
-                    //debug
-                    if (length < 0)
-                    {
-                        Debug.LogError(typeToHandle.CleanAssemblyQualifiedName() + " " + isStatic + "\n" + line);
-                    }
-                    var key = line.Substring(start, keyvalSep - start - 1);
-                    var val = line.Substring(keyvalSep + 2, line.Length - keyvalSep - 4);
+        //        string section = text.Substring(dictionaryEntriesStart, end - dictionaryEntriesStart);
 
-                    if (long.TryParse(val, out var existingId))
-                    {
-                        existingMethodToIdMap.Add(key, existingId);
-                    }
-                    else
-                    {
-                        Debug.LogError($"Failed to parse method id: {val} for method: {key} in existing SaveHandler: {handlerType.FullName} at path: {savehandlerFilePath}");
-                    }
-                }
-            }
-        }
+        //        var entries = section.Split(_NewLine, StringSplitOptions.RemoveEmptyEntries);
+
+        //        for (int i = 0; i < entries.Length - 1; i++)  //last line is the };
+        //        {
+        //            var line = entries[i];
+
+        //            if (line.Contains("#if") || line.Contains("#endif")) continue;
+
+        //            int keyvalSep = line.IndexOfNth(',', -2);
+        //            var start = line.IndexOf('\"') + 1;
+        //            var length = keyvalSep - start - 1;
+        //            //debug
+        //            if (length < 0)
+        //            {
+        //                Debug.LogError(typeToHandle.CleanAssemblyQualifiedName() + " " + isStatic + "\n" + line);
+        //            }
+        //            var methodSignature = line.Substring(start, keyvalSep - start - 1);
+        //            var val = line.Substring(keyvalSep + 2, line.Length - keyvalSep - 4);
+
+        //            if (long.TryParse(val, out var existingId))
+        //            {
+        //                existingMethodToIdMap.Add(methodSignature, existingId);
+        //            }
+        //            else
+        //            {
+        //                Debug.LogError($"Failed to parse method id: {val} for method: {methodSignature} in existing SaveHandler: {handlerType.FullName} at path: {savehandlerFilePath}");
+        //            }
+        //        }
+        //    }
+        //}
 
 
         foreach (var method in typeReport.Methods)
@@ -959,6 +945,7 @@ public class SaveHandlerAutoGenerator : ScriptableObject
 
 
     //todo: assetdb should decide what is asset and what is not. quick fix for now
+    //duplicated from ojfnds89735nsfkdjdfk
     public bool IsAsset(Type type)
     {
         return typeof(UnityEngine.Object).IsAssignableFrom(type)
@@ -967,25 +954,30 @@ public class SaveHandlerAutoGenerator : ScriptableObject
                 && !typeof(UnityEngine.ScriptableObject).IsAssignableFrom(type);
     }
 
+    
 
-    class MyClass
+    public static string GenerateMethodSignatureToIdMapTag(Type typeToHandle, bool isStatic)
     {
-        public string name;
-    }
-    [SaveHandler(34343, nameof(MyClass), typeof(MyClass))]
-    class MyClassSaveHandler : UnmanagedSaveHandler<MyClass, MyClassSaveData>
-    {
-        public override void WriteSaveData()
+        var typeName = typeToHandle.Name;
+
+        if (typeToHandle.IsGenericType)
         {
-            base.WriteSaveData();
-
-            __saveData.name = __instance.name;
+            typeName = typeName.Substring(0, typeName.IndexOf('`'));
+            typeName += "{" + new string(',', typeToHandle.GetGenericArguments().Length - 1) + "}";
         }
+
+
+        string text2 = isStatic ? "static " : "";
+
+        string tag = $"/// methodToId map for {text2}<see cref=\"{typeName}\"/>";
+
+        return tag;
     }
-    class MyClassSaveData : SaveDataBase
-    {
-        public string name;
-    }
+
+
+
+
+
 
 
 

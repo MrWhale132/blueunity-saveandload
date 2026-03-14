@@ -4,6 +4,7 @@ using System.Linq;
 using Theblueway.SaveAndLoad.Packages.com.theblueway.saveandload.Runtime.InfraScripts;
 using UnityEditor;
 using UnityEngine;
+using static Theblueway.SaveAndLoad.Packages.com.theblueway.saveandload.Runtime.InfraScripts.InlinedObjectDescription;
 
 namespace Assets._Project.Scripts.Infrastructure
 {
@@ -47,7 +48,7 @@ namespace Assets._Project.Scripts.Infrastructure
                 {
                     var description = infra.InlinedPrefabDescription;
 
-                    didChange = CheckInlinedDescription(infra,description);
+                    didChange = CheckInlinedDescription(infra, description);
                     if (didChange) SetDirty(infra);
                 }
 
@@ -108,7 +109,25 @@ namespace Assets._Project.Scripts.Infrastructure
 
         public static void PopulateInlinedDescription(GOInfra infra, InlinedObjectDescription description)
         {
+            if(description.members == null) description.members = new List<ObjectMember>();
+
+
             HashSet<Object> ignoredMembers = description.memberExclusionSettings.excludedMembers.ToHashSet();
+
+            var members = description.members.Where(m => m.member != null).ToList();
+
+            //doc:
+            //record which members were already added so we dont generate a new memberId for them.
+            //this is important to ensure because memberIds are saved into the savefile and will be used to match members when loading,
+            //so if we generate new memberIds for members that were already in the description,
+            //then loading old savefiles will break because the memberIds wont match anymore.
+
+            //additionaly: as of this the same UnityEngine.Object can run under multiple memberIds, hence the List
+
+            Dictionary<Object, List<ObjectMember>> existingDescriptionMembersByMember =
+                description.members.Where(m => m.member != null).GroupBy(m => m.member).ToDictionary(g => g.Key, g => g.ToList());
+
+            HashSet<Object> added = new();
 
 
             description.members.Clear();
@@ -124,13 +143,25 @@ namespace Assets._Project.Scripts.Infrastructure
                         return;
                     }
 
-                    var objectMember = new InlinedObjectDescription.ObjectMember()
-                    {
-                        member = member,
-                        memberId = RandomId.New,
-                    };
+                    if (added.Contains(member)) return;
 
-                    description.members.Add(objectMember);
+
+                    if (existingDescriptionMembersByMember.ContainsKey(member))
+                    {
+                        description.members.AddRange(existingDescriptionMembersByMember[member]);
+                        added.Add(member);
+                    }
+                    else
+                    {
+                        var objectMember = new ObjectMember()
+                        {
+                            member = member,
+                            memberId = RandomId.New,
+                        };
+
+                        description.members.Add(objectMember);
+                        added.Add(member);
+                    }
                 }
 
                 AddMember(parent.gameObject);
