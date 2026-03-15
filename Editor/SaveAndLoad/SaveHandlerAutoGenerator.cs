@@ -144,7 +144,13 @@ public class SaveHandlerAutoGenerator : ScriptableObject
         }
 
 
-        RandomId id = RandomId.Get();
+
+        if (SaveAndLoadManager.Service.HasTypeId(typeReport.ReportedType, isStatic: false, out long id))
+        {
+
+        }
+        else id = (long)RandomId.New;
+
 
         string attribute = $"[{nameof(CustomSaveDataAttribute)[..^"Attribute".Length]}(" +
             $"{id}, " +

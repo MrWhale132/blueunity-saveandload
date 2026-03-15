@@ -56,7 +56,6 @@ public class SaveAndLoadCodeGenSettings : ScriptableObject
                 AssemblyExclusionRule.From(assembly => assembly.GetName().Name == "Assembly-CSharp-Editor"),
                 AssemblyExclusionRule.From(assembly => assembly.FullName.StartsWith("UnityEditor.")),
                 AssemblyExclusionRule.From(assembly => assembly.FullName.StartsWith("nunit.")),
-                AssemblyExclusionRule.From(assembly => assembly.GetName().Name == "KCCAsmdef"),
             },
             TypeExclusionRules = new List<TypeExclusionRule>()
             {

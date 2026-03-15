@@ -475,6 +475,28 @@ namespace Assets._Project.Scripts.SaveAndLoad
 
 
 
+            public bool HasTypeId(Type type, bool isStatic, out long typeId)
+            {
+                if (HasSaveHandlerForType(type, isStatic, out var shAttribute))
+                {
+                    typeId = shAttribute.Id;
+                    return true;
+                }
+
+                if (HasCustomSaveData(type, out var attribute))
+                {
+                    typeId = attribute.Id;
+                    return true;
+                }
+
+                typeId = 0;
+                return false;
+            }
+
+
+
+
+
 
             public int GetCustomSaveDataAppVersionByHandledType(Type handledType)
             {
@@ -1156,6 +1178,14 @@ namespace Assets._Project.Scripts.SaveAndLoad
 
 
 
+            public bool HasTypeId(Type type, bool isStatic, out long typeId)
+            {
+                return coreService.HasTypeId(type, isStatic, out typeId);
+            }
+
+
+
+
 
 
             //todo: do we need to check serializables too?
@@ -1242,7 +1272,7 @@ namespace Assets._Project.Scripts.SaveAndLoad
 
             public bool IsTypeHandled_Editor(Type type)
             {
-                return IsTypeHandled_Editor(type, isStatic: false) && IsTypeHandled_Editor(type, isStatic: true);
+                return IsTypeHandled_Editor(type, isStatic: false) || IsTypeHandled_Editor(type, isStatic: true);
             }
 
             public bool IsTypeManuallyHandled_Editor(Type type, bool isStatic)
@@ -1483,6 +1513,9 @@ namespace Assets._Project.Scripts.SaveAndLoad
 
 
 
+
+
+
             public Dictionary<Type, SaveHandlerAttribute> __staticSaveHandlerAttributesByHandledType => coreService.__staticSaveHandlerAttributesByHandledType;
 
             public Dictionary<Type, SaveHandlerAttribute> __saveHandlerAttributesByHandledType => coreService.__saveHandlerAttributesByHandledType;
@@ -1510,81 +1543,7 @@ namespace Assets._Project.Scripts.SaveAndLoad
 
             public Type GetHandledTypeByHandlerId(long id)
             {
-                return GetHandledTypeByHandlerId(id, out var _);
-            }
-
-            public Type GetHandledTypeByHandlerId(long id, out bool isStatic)
-            {
-                return GetHandledTypeByHandlerId(id, log: true, out isStatic);
-            }
-
-            public Type GetHandledTypeByHandlerId(long id, bool log, out bool isStatic)
-            {
-                InitServiceIfNeeded();
-
-                if (!HadBuiltSaveHandlerIdByTypeLookups)
-                {
-                    //var handlers = __saveHandlerAttributesByHandledType.Values;
-
-                    //foreach (var handler in handlers)
-                    //{
-                    //    __saveHandlerAttributesById[handler.Id] = handler;
-                    //}
-
-
-                    var handlers = __staticSaveHandlerAttributesByHandledType.Values;
-
-                    __staticSaveHandlerAttributesById = new();
-
-                    foreach (var handler in handlers)
-                    {
-                        __staticSaveHandlerAttributesById[handler.Id] = handler;
-                    }
-                }
-
-                if (__staticSaveHandlerAttributesById.TryGetValue(id, out var attr))
-                {
-                    isStatic = true;
-                    return attr.StaticHandlerOf;
-                }
-                if (__saveHandlerAttributesById.TryGetValue(id, out attr))
-                {
-                    isStatic = false;
-                    return attr.HandledType;
-                }
-
-                if (log)
-                    Debug.LogError($"No savehandler found with id {id}.");
-                //Debug.LogError($"No handled type found for id {id}");
-                isStatic = false;
-                return null;
-            }
-
-
-
-            public Dictionary<long, (string handledTypeName, bool isStatic)> GetHandledTypeNameByHandlerIdLookup()
-            {
-                InitServiceIfNeeded();
-
-
-                var handlerIdsByTypeName = new Dictionary<long, (string handledTypeName, bool isStatic)>();
-
-                var handlers = __saveHandlerAttributesByHandledType.Values;
-
-                foreach (var handler in handlers)
-                {
-                    handlerIdsByTypeName[handler.Id] = (handler.HandledType.CleanAssemblyQualifiedName(), isStatic: false);
-                }
-
-                handlers = __staticSaveHandlerAttributesByHandledType.Values;
-
-                foreach (var handler in handlers)
-                {
-                    //todo: here the handled type is the subtitue type. Get the subtituted type
-                    handlerIdsByTypeName[handler.Id] = (handler.StaticHandlerOf.CleanAssemblyQualifiedName(), isStatic: true);
-                }
-
-                return handlerIdsByTypeName;
+                return _coreServiceInstance.GetHandledTypeByHandlerId(id);
             }
 
 
@@ -1744,20 +1703,7 @@ namespace Assets._Project.Scripts.SaveAndLoad
 
         public bool HasTypeId(Type type, bool isStatic, out long typeId)
         {
-            if (_coreService.HasSaveHandlerForType(type, isStatic, out var shAttribute))
-            {
-                typeId = shAttribute.Id;
-                return true;
-            }
-
-            if (_coreService.HasCustomSaveData(type, out var attribute))
-            {
-                typeId = attribute.Id;
-                return true;
-            }
-
-            typeId = 0;
-            return false;
+            return _coreService.HasTypeId(type, isStatic, out typeId);
         }
 
 

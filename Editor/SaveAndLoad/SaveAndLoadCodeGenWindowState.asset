@@ -16,72 +16,22 @@ MonoBehaviour:
   _eventqueue: []
   _changedFiles:
   - ChangeType: 4
-    FullPath: D:\Unity Projects\Unity Tanks! 3\Assets\_Tanks\Scripts\UI\PauseMenu.cs
-    Name: _Tanks\Scripts\UI\PauseMenu.cs
-  - ChangeType: 4
-    FullPath: D:\Unity Projects\Unity Tanks! 3\Assets\_Tanks\Scripts\Tank\TankAI.cs
-    Name: _Tanks\Scripts\Tank\TankAI.cs
-  - ChangeType: 4
-    FullPath: D:\Unity Projects\Unity Tanks! 3\Assets\_Tanks\Scripts\Managers\TankManager.cs
-    Name: _Tanks\Scripts\Managers\TankManager.cs
-  - ChangeType: 4
-    FullPath: D:\Unity Projects\Unity Tanks! 3\Assets\_Tanks\Scripts\UI\GameUIHandler.cs
-    Name: _Tanks\Scripts\UI\GameUIHandler.cs
-  - ChangeType: 4
-    FullPath: D:\Unity Projects\Unity Tanks! 3\Assets\_Project\Scripts\Generated\TheBlueWay\SaveHandlers\UnityEngine.UI\DevTest\UnityEngine\UI\GraphicSaveHandler.cs
-    Name: _Project\Scripts\Generated\TheBlueWay\SaveHandlers\UnityEngine.UI\DevTest\UnityEngine\UI\GraphicSaveHandler.cs
-  - ChangeType: 4
-    FullPath: D:\Unity Projects\Unity Tanks! 3\Assets\_Project\Scripts\Generated\TheBlueWay\SaveHandlers\UnityEngine.CoreModule\DevTest\UnityEngine\LightSaveHandler.cs
-    Name: _Project\Scripts\Generated\TheBlueWay\SaveHandlers\UnityEngine.CoreModule\DevTest\UnityEngine\LightSaveHandler.cs
-  - ChangeType: 4
     FullPath: D:\Unity Projects\Unity Tanks! 3\Assets\_Project\Scripts\Z.cs
     Name: _Project\Scripts\Z.cs
   - ChangeType: 4
-    FullPath: D:\Unity Projects\Unity Tanks! 3\Assets\_Project\Scripts\Generated\TheBlueWay\SaveHandlers\UnityEngine.CoreModule\DevTest\UnityEngine\MonoBehaviourSaveHandler.cs
-    Name: _Project\Scripts\Generated\TheBlueWay\SaveHandlers\UnityEngine.CoreModule\DevTest\UnityEngine\MonoBehaviourSaveHandler.cs
-  - ChangeType: 4
-    FullPath: D:\Unity Projects\Unity Tanks! 3\Assets\_Project\Scripts\Generated\TheBlueWay\SaveHandlers\UnityEngine.AudioModule\DevTest\UnityEngine\AudioSourceSaveHandler.cs
-    Name: _Project\Scripts\Generated\TheBlueWay\SaveHandlers\UnityEngine.AudioModule\DevTest\UnityEngine\AudioSourceSaveHandler.cs
-  - ChangeType: 1
-    FullPath: D:\Unity Projects\Unity Tanks! 3\Assets\_Project\Scripts\GenZ.cs
-    Name: _Project\Scripts\GenZ.cs
-  - ChangeType: 4
-    FullPath: D:\Unity Projects\Unity Tanks! 3\Assets\_Project\Scripts\GenZ.cs
-    Name: _Project\Scripts\GenZ.cs
-  - ChangeType: 4
-    FullPath: D:\Unity Projects\Unity Tanks! 3\Assets\_Project\Scripts\Generated\TheBlueWay\SaveHandlers\UnityEngine.UIModule\DevTest\UnityEngine\CanvasSaveHandler.cs
-    Name: _Project\Scripts\Generated\TheBlueWay\SaveHandlers\UnityEngine.UIModule\DevTest\UnityEngine\CanvasSaveHandler.cs
-  - ChangeType: 4
-    FullPath: D:\Unity Projects\Unity Tanks! 3\Assets\_Project\Scripts\Generated\TheBlueWay\SaveHandlers\UnityEngine.UIModule\DevTest\UnityEngine\CanvasRendererSaveHandler.cs
-    Name: _Project\Scripts\Generated\TheBlueWay\SaveHandlers\UnityEngine.UIModule\DevTest\UnityEngine\CanvasRendererSaveHandler.cs
-  - ChangeType: 4
-    FullPath: D:\Unity Projects\Unity Tanks! 3\Assets\_Project\Scripts\Generated\TheBlueWay\SaveHandlers\Unity.InputSystem\DevTestCustomDatas\UnityEngine\InputSystem\Users\InputUserCustomSaveData.cs
-    Name: _Project\Scripts\Generated\TheBlueWay\SaveHandlers\Unity.InputSystem\DevTestCustomDatas\UnityEngine\InputSystem\Users\InputUserCustomSaveData.cs
-  - ChangeType: 4
     FullPath: D:\Unity Projects\Unity Tanks! 3\Assets\_Project\Scripts\Generated\TheBlueWay\SaveHandlers\UnityEngine.CoreModule\DevTest\UnityEngine\RectTransformSaveHandler.cs
     Name: _Project\Scripts\Generated\TheBlueWay\SaveHandlers\UnityEngine.CoreModule\DevTest\UnityEngine\RectTransformSaveHandler.cs
-  - ChangeType: 4
-    FullPath: D:\Unity Projects\Unity Tanks! 3\Assets\_Project\Scripts\Generated\TheBlueWay\SaveHandlers\UnityEngine.CoreModule\DevTest\UnityEngine\RendererSaveHandler.cs
-    Name: _Project\Scripts\Generated\TheBlueWay\SaveHandlers\UnityEngine.CoreModule\DevTest\UnityEngine\RendererSaveHandler.cs
-  - ChangeType: 4
-    FullPath: D:\Unity Projects\Unity Tanks! 3\Assets\_Project\Scripts\Generated\TheBlueWay\SaveHandlers\UnityEngine.CoreModule\DevTest\UnityEngine\TextureSaveHandler.cs
-    Name: _Project\Scripts\Generated\TheBlueWay\SaveHandlers\UnityEngine.CoreModule\DevTest\UnityEngine\TextureSaveHandler.cs
-  - ChangeType: 4
-    FullPath: D:\Unity Projects\Unity Tanks! 3\Assets\_Project\Scripts\Generated\TheBlueWay\SaveHandlers\UnityEngine.CoreModule\DevTest\UnityEngine\Texture2DSaveHandler.cs
-    Name: _Project\Scripts\Generated\TheBlueWay\SaveHandlers\UnityEngine.CoreModule\DevTest\UnityEngine\Texture2DSaveHandler.cs
-  - ChangeType: 1
-    FullPath: D:\Unity Projects\Unity Tanks! 3\Assets\Assets\_Project\Scripts\Generated\TheBlueWay\SaveHandlers\Assembly-CSharp\SaveHandlers\ZSaveHandler.cs
-    Name: Assets\_Project\Scripts\Generated\TheBlueWay\SaveHandlers\Assembly-CSharp\SaveHandlers\ZSaveHandler.cs
-  - ChangeType: 4
-    FullPath: D:\Unity Projects\Unity Tanks! 3\Assets\Assets\_Project\Scripts\Generated\TheBlueWay\SaveHandlers\Assembly-CSharp\SaveHandlers\ZSaveHandler.cs
-    Name: Assets\_Project\Scripts\Generated\TheBlueWay\SaveHandlers\Assembly-CSharp\SaveHandlers\ZSaveHandler.cs
-  - ChangeType: 1
-    FullPath: D:\Unity Projects\Unity Tanks! 3\Assets\_Project\Scripts\ZStaticTest.cs
-    Name: _Project\Scripts\ZStaticTest.cs
-  - ChangeType: 4
-    FullPath: D:\Unity Projects\Unity Tanks! 3\Assets\_Project\Scripts\ZStaticTest.cs
-    Name: _Project\Scripts\ZStaticTest.cs
-  _selectedIndices: 06000000
+  _codegenTargets:
+  - identifierType: 1
+    _validityState: 0
+    _assemblyQualifiedTypeName: Z, Assembly-CSharp
+    _saveHandlerId: 446128961742929075
+    _isStaticPart: 1
+  - identifierType: 1
+    _validityState: 0
+    _assemblyQualifiedTypeName: Z+ZStructTest, Assembly-CSharp
+    _saveHandlerId: 477239033905197609
+    _isStaticPart: 1
+  _selectedIndices: 
   _userSettings: {fileID: 11400000, guid: 8b67b65e7aed92246b93ac4b59be0137, type: 2}
   _selectedFolderToScan: _Tanks
-  _forceGenerateHandlersOfTypeGenConfigs: 0

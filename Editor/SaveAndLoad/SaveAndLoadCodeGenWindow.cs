@@ -40,7 +40,8 @@ public class SaveAndLoadCodeGenWindow : EditorWindow
 
 
     public Vector2 _scrollPos;
-    public List<FileSystemEventArgsDto> _changedFiles = new();
+    //public List<FileSystemEventArgsDto> _changedFiles = new();
+    public List<CodeGenTargetModel> _codegenTargets = new();
     public HashSet<int> _selectedIndices = new HashSet<int>(); // which entries are selected
 
 
@@ -57,6 +58,7 @@ public class SaveAndLoadCodeGenWindow : EditorWindow
     private void OnEnable()
     {
         LoadState();
+        ValidateState();
     }
     private void OnDisable()
     {
@@ -70,7 +72,7 @@ public class SaveAndLoadCodeGenWindow : EditorWindow
         //Debug.Log("save state");
         _state._eventqueue = _eventQueue.ToList();
         _state._scrollPos = _scrollPos;
-        _state._changedFiles = _changedFiles;
+        _state._codegenTargets = _codegenTargets;
         _state._selectedIndices = _selectedIndices.ToList();
         _state._userSettings = _userSettings;
         _state._selectedFolderToScan = _selectedFolderToScan;
@@ -100,9 +102,34 @@ public class SaveAndLoadCodeGenWindow : EditorWindow
         _userSettings = _state._userSettings;
         _eventQueue = new ConcurrentQueue<FileSystemEventArgsDto>(_state._eventqueue);
         _scrollPos = _state._scrollPos;
-        _changedFiles = _state._changedFiles;
+        _codegenTargets = _state._codegenTargets;
         _selectedIndices = new HashSet<int>(_state._selectedIndices);
     }
+
+
+
+
+    public void ValidateState()
+    {
+        if (_codegenTargets.IsNotNullAndNotEmpty())
+        {
+            for (int i = _codegenTargets.Count - 1; i >= 0; i--)
+            {
+                var target = _codegenTargets[i];
+
+                if (target.IsNotValid)
+                {
+                    _codegenTargets.RemoveAt(i);
+                    _selectedIndices.Remove(i);
+                }
+            }
+        }
+    }
+
+
+
+
+
 
 
 
@@ -122,7 +149,6 @@ public class SaveAndLoadCodeGenWindow : EditorWindow
             // Now safely handle on Unity’s main thread
             if (e.ChangeType == WatcherChangeTypes.Deleted)
             {
-                _changedFiles.RemoveAll(f => f.FullPath == e.FullPath);
                 continue;
             }
 
@@ -132,12 +158,18 @@ public class SaveAndLoadCodeGenWindow : EditorWindow
                 continue;
             }
 
-            bool duplicate = _changedFiles.Any(f => f.FullPath == e.FullPath && f.ChangeType == e.ChangeType);
 
-            if (!duplicate)
+            IEnumerable<Type> typesInFile = FindTypesInFile(e.FullPath);
+
+            foreach (Type type in typesInFile)
             {
+                CodeGenTargetModel codeGenTarget = CodeGenTargetModel.Create(type);
+
+                var duplicate = _codegenTargets.Any(target => target.HasSameTargetAs(codeGenTarget));
+                if (duplicate) continue;
+
                 changed = true;
-                _changedFiles.Add(e);
+                _codegenTargets.Add(codeGenTarget);
             }
         }
 
@@ -150,7 +182,7 @@ public class SaveAndLoadCodeGenWindow : EditorWindow
 
 
 
-    public void EnsureTypeGenConfigs(bool forceRegenerate)
+    public void EnsureTypeGenConfigs()
     {
         Session session = NewSession();
 
@@ -194,9 +226,12 @@ public class SaveAndLoadCodeGenWindow : EditorWindow
         EditorGUILayout.BeginHorizontal();
         // Scrollable list
         _scrollPos = EditorGUILayout.BeginScrollView(_scrollPos, GUILayout.Height(200), GUILayout.Width(350));
-        for (int i = 0; i < _changedFiles.Count; i++)
+        for (int i = 0; i < _codegenTargets.Count; i++)
         {
-            var entry = _changedFiles[i];
+            var entry = _codegenTargets[i];
+
+            if (entry.IsNotValid) continue;
+
 
             bool selected = _selectedIndices.Contains(i);
 
@@ -206,7 +241,7 @@ public class SaveAndLoadCodeGenWindow : EditorWindow
             };
 
 
-            bool newSelected = GUILayout.Toggle(selected, Path.GetFileName(entry.FullPath), style, GUILayout.Width(250));
+            bool newSelected = GUILayout.Toggle(selected, entry.Type.Name, style, GUILayout.Width(250));
 
 
             if (newSelected != selected)
@@ -254,7 +289,7 @@ public class SaveAndLoadCodeGenWindow : EditorWindow
         }
         if (GUILayout.Button("Run CodeGen on Selected"))
         {
-            var tasks = CreateCodeGenTasksFromSelected();
+            var tasks = GetTypesFromSelected();
 
             CreateTypeReportsAndRunCodeGen(tasks);
 
@@ -266,11 +301,10 @@ public class SaveAndLoadCodeGenWindow : EditorWindow
 
         EditorGUILayout.Space(40);
 
-        _state._forceGenerateHandlersOfTypeGenConfigs = GUILayout.Toggle(_state._forceGenerateHandlersOfTypeGenConfigs, "Force regen handlers of typegen configs");
 
         if (GUILayout.Button("Ensure typegen configs"))
         {
-            EnsureTypeGenConfigs(forceRegenerate: _state._forceGenerateHandlersOfTypeGenConfigs);
+            EnsureTypeGenConfigs();
         }
 
         EditorGUILayout.EndVertical();
@@ -564,26 +598,33 @@ public class SaveAndLoadCodeGenWindow : EditorWindow
 
         var csFiles = GetCsFiles(absPath);
 
-        var foundTypes = new HashSet<Type>();
+        var unhandledTypes = new HashSet<Type>();
 
         foreach (var file in csFiles)
         {
-            foundTypes.AddRange(FindTypesInFile(file));
-        }
-
-
-        var unhandledTypes = new HashSet<Type>();
-
-        foreach (var type in foundTypes)
-        {
-            if (!_saveAndLoadService.IsTypeHandled_Editor(type)
-                && !_userSettings.TypeExclusionSettings.ShouldExclude(type))
+            foreach (var type in FindTypesInFile(file))
             {
-                unhandledTypes.Add(type);
+                if (!SaveAndLoadManager.Service.IsTypeHandled_Editor(type))
+                {
+                    unhandledTypes.Add(type);
+                }
             }
         }
 
         return unhandledTypes;
+
+        //var unhandledTypes = new HashSet<Type>();
+
+        //foreach (var type in foundTypes)
+        //{
+        //    if (!_saveAndLoadService.IsTypeHandled_Editor(type)
+        //        && !_userSettings.TypeExclusionSettings.ShouldExclude(type))
+        //    {
+        //        unhandledTypes.Add(type);
+        //    }
+        //}
+
+        //return unhandledTypes;
     }
 
 
@@ -638,7 +679,7 @@ public class SaveAndLoadCodeGenWindow : EditorWindow
 
         var foundUnhandledTypes = allComponentsOfAllGameObjects
                             .Select(x => x.GetType())
-                            .Where(t => !_saveAndLoadService.HasSaveHandlerForType_Editor(t)
+                            .Where(t => !SaveAndLoadManager.Service.IsTypeHandled_Editor(t)
                                         && !_userSettings.TypeExclusionSettings.ShouldExclude(t))
                             .ToHashSet();
 
@@ -680,29 +721,21 @@ public class SaveAndLoadCodeGenWindow : EditorWindow
 
 
 
-    private void DiscardSelected()
+
+
+
+    public IEnumerable<Type> GetTypesFromSelected()
     {
-        RemoveSelectedFiles();
-    }
+        foreach (var index in _selectedIndices)
+        {
+            var target = _codegenTargets[index];
 
-
-
-
-
-    public class CodeGenTask
-    {
-        public string filePath;
-        public List<(Type rootType, List<Type> nestedTypes)> rootAndChildren = new();
-    }
-
-
-    public List<CodeGenTask> CreateCodeGenTasksFromSelected()
-    {
-        var filePaths = _changedFiles.Where((file, i) => _selectedIndices.Contains(i)).Select(f => f.FullPath);
-
-        var tasks = CreateCodeGenTasks(filePaths);
-
-        return tasks;
+            if (target.IsValid) yield return target.Type;
+            else
+            {
+                BlueDebug.Debug($"codegen target is invalid");
+            }
+        }
     }
 
 
@@ -733,9 +766,15 @@ public class SaveAndLoadCodeGenWindow : EditorWindow
                 continue;
             }
 
-            if (!CodeGenUtils.Config.NonPublicToo && type.IsNested && !type.IsNestedPublic)
+            if (!_userSettings.GenerateSaveHandlersAsNestedClassesInsideHandledType && type.IsNested && !type.IsNestedPublic)
             {
                 //skip non public nested types
+                continue;
+            }
+
+            if (_userSettings != null && _userSettings.TypeExclusionSettings.ShouldExclude(type))
+            {
+                BlueDebug.Debug($"Type: {type.CleanAssemblyQualifiedName()} is excluded by type exlusion settings.");
                 continue;
             }
 
@@ -747,94 +786,6 @@ public class SaveAndLoadCodeGenWindow : EditorWindow
 
 
 
-    public List<CodeGenTask> CreateCodeGenTasks(IEnumerable<string> filePaths)
-    {
-        List<Type> typesInFiles = new List<Type>();
-
-        foreach (var file in filePaths)
-        {
-            typesInFiles.AddRange(FindTypesInFile(file));
-        }
-
-        return CreateCodeGenTasks(typesInFiles);
-    }
-
-
-    public List<CodeGenTask> CreateCodeGenTasks(IEnumerable<Type> types)
-    {
-        var codegenTasks = new List<CodeGenTask>();
-
-        Dictionary<string, Type> rootTypesByName = new();
-        Dictionary<string, List<Type>> nestedTypesByRootTypeName = new();
-
-        foreach (var type in types)
-        {
-            if (type.IsNested)
-            {
-                int rootTypeNameEndIndex = type.FullName.IndexOf("+");
-
-                var rootTypeName = type.FullName.Substring(0, rootTypeNameEndIndex);
-
-                if (!nestedTypesByRootTypeName.ContainsKey(rootTypeName))
-                {
-                    nestedTypesByRootTypeName[rootTypeName] = new List<Type>();
-                }
-
-                nestedTypesByRootTypeName[rootTypeName].Add(type);
-            }
-            else
-            {
-                //todo: this will fail with two types with same fullname in two different assembly
-                //perhaps just use the type isntance instead of its name?
-                rootTypesByName.Add(type.FullName, type);
-            }
-        }
-
-
-        //todo: lookup the containing file location of the type
-        //a groupby will aslo be needed
-        var codegenTask = new CodeGenTask { filePath = null };
-
-        foreach ((string name, Type rootType) in rootTypesByName)
-        {
-            var nestedTypesOfRootType = nestedTypesByRootTypeName.TryGetValue(name, out var nestedTypes) ? nestedTypes : new List<Type>();
-
-            codegenTask.rootAndChildren.Add((rootType, nestedTypesOfRootType));
-        }
-
-        codegenTasks.Add(codegenTask);
-
-
-        return codegenTasks;
-    }
-
-
-
-
-
-    private void CreateTypeReportsAndRunCodeGen(IEnumerable<CodeGenTask> codeGenTasks)
-    {
-        IEnumerable<Type> Flatten(IEnumerable<CodeGenTask> codegenTasks)
-        {
-            var result = new List<Type>();
-
-            foreach (var task in codegenTasks)
-            {
-                foreach ((var rootType, var nestedTypes) in task.rootAndChildren)
-                {
-                    result.Add(rootType);
-
-                    foreach (var nestedType in nestedTypes)
-                        result.Add(nestedType);
-                }
-            }
-            return result;
-        }
-
-        var flattened = Flatten(codeGenTasks);
-
-        CreateTypeReportsAndRunCodeGen(flattened);
-    }
 
 
     private void CreateTypeReportsAndRunCodeGen(IEnumerable<Type> typesToHandle, Session session = null)
@@ -1021,7 +972,7 @@ public class SaveAndLoadCodeGenWindow : EditorWindow
 
             if (obsolete != null && (obsolete.IsError || _userSettings.IgnoreAnyObsolete))
             {
-                Debug.LogWarning("Skipping obsolete type: " + type.AssemblyQualifiedName);
+                BlueDebug.Debug("Skipping obsolete type: " + type.AssemblyQualifiedName);
                 continue;
             }
 
@@ -1718,7 +1669,7 @@ public class SaveAndLoadCodeGenWindow : EditorWindow
 
                         var (startLine, endLine) = CodeGenUtils.FindTypeDeclarationStartAndEndLineIndexInFile(type, alteredSource);
 
-                        int i = endLine-1;
+                        int i = endLine - 1;
 
                         while (i > startLine)
                         {
@@ -2227,10 +2178,16 @@ prop.GetCustomAttributes(typeof(CompilerGeneratedAttribute), false).Any() ||
 
 
 
+    private void DiscardSelected()
+    {
+        RemoveSelectedFiles();
+    }
+
+
 
     public void ClearFileList()
     {
-        _changedFiles.Clear();
+        _codegenTargets.Clear();
         _selectedIndices.Clear();
     }
 
@@ -2243,7 +2200,7 @@ prop.GetCustomAttributes(typeof(CompilerGeneratedAttribute), false).Any() ||
 
 
         foreach (var index in indices)
-            _changedFiles.RemoveAt(index);
+            _codegenTargets.RemoveAt(index);
 
         _selectedIndices.Clear();
     }
@@ -2298,6 +2255,150 @@ prop.GetCustomAttributes(typeof(CompilerGeneratedAttribute), false).Any() ||
 
 
 }
+
+
+
+
+public enum CodeGenTargetIdentifier
+{
+    AssemblyQualifiedTypeName,
+    SaveHandlerId,
+}
+
+[Flags]
+public enum CodeGenTargetState : uint
+{
+    /// <summary>
+    /// Not validated yet
+    /// </summary>
+    None = 0,
+    Valid = 1,
+    Invalid = 1u << 31,
+    NotFound = Invalid | (1u << 1),
+}
+
+
+[Serializable]
+public class CodeGenTargetModel
+{
+    //cant store this, it needs to be resolved every time because types can be moved/renamed/removed and the file path will not be updated accordingly, so we need to try to resolve it every time and if it fails, we mark it as not found. We can store the file path in editor only and use it for resolving, but it will not be reliable and will not work for types that are not defined in a file, like generated types, types from external assemblies, etc.
+    //public string containingSourceFilePath;
+    public CodeGenTargetIdentifier identifierType;
+
+    public CodeGenTargetState _validityState;
+    public string _assemblyQualifiedTypeName;
+    public long _saveHandlerId;
+    public bool _isStaticPart;
+
+    public Type _resolvedTypeCache;
+
+    public bool IsValid => GetValidityState() == CodeGenTargetState.Valid;
+    public bool IsNotValid => !IsValid;
+
+    public Type Type {
+        get
+        {
+            ResolveIdentifierIfNeeded();
+            return _resolvedTypeCache;
+        }
+        set
+        {
+            SetType(value);
+        }
+    }
+
+    public static CodeGenTargetModel Create(Type type)
+    {
+        var view = new CodeGenTargetModel()
+        {
+        };
+
+        view.SetType(type);
+        return view;
+    }
+
+
+    public CodeGenTargetState GetValidityState()
+    {
+        ResolveIdentifierIfNeeded();
+
+        var state = CodeGenTargetState.None;
+
+        if (_resolvedTypeCache == null)
+        {
+            state |= CodeGenTargetState.NotFound;
+        }
+
+        if (state == CodeGenTargetState.None)
+        {
+            state = CodeGenTargetState.Valid;
+        }
+
+        return state;
+    }
+
+
+    public void ResolveIdentifierIfNeeded()
+    {
+        if (_resolvedTypeCache != null) return;
+
+
+        if (identifierType == CodeGenTargetIdentifier.AssemblyQualifiedTypeName)
+        {
+            _resolvedTypeCache = Type.GetType(_assemblyQualifiedTypeName);
+        }
+        else if (identifierType == CodeGenTargetIdentifier.SaveHandlerId)
+        {
+            _resolvedTypeCache = SaveAndLoadManager.Service.GetHandledTypeByHandlerId(_saveHandlerId);
+            _assemblyQualifiedTypeName = _resolvedTypeCache?.CleanAssemblyQualifiedName();
+        }
+    }
+
+    public void SetType(Type type)
+    {
+        identifierType = CodeGenTargetIdentifier.AssemblyQualifiedTypeName;
+        _assemblyQualifiedTypeName = type.CleanAssemblyQualifiedName();
+
+        if (SaveAndLoadManager.Service.HasTypeId(type, isStatic: false, out _saveHandlerId))
+        {
+            identifierType = CodeGenTargetIdentifier.SaveHandlerId;
+            _isStaticPart = false;
+        }
+        else if (SaveAndLoadManager.Service.HasTypeId(type, isStatic: true, out _saveHandlerId)) { }
+        {
+            identifierType = CodeGenTargetIdentifier.SaveHandlerId;
+            _isStaticPart = true;
+        }
+    }
+
+
+    public bool HasSameTargetAs(CodeGenTargetModel other)
+    {
+        if (other == null) return false;
+
+        if (identifierType is CodeGenTargetIdentifier.AssemblyQualifiedTypeName)
+        {
+            return _assemblyQualifiedTypeName.Equals(other._assemblyQualifiedTypeName);
+        }
+        else if (identifierType is CodeGenTargetIdentifier.SaveHandlerId)
+        {
+            return _saveHandlerId == other._saveHandlerId;
+        }
+        else
+        {
+            Debug.LogError($"Unknown state for enum: {nameof(CodeGenTargetIdentifier)}");
+            return false;
+        }
+    }
+}
+
+
+
+
+
+
+
+
 
 
 [Serializable]
