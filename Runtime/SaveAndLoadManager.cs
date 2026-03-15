@@ -1466,67 +1466,15 @@ namespace Assets._Project.Scripts.SaveAndLoad
                     {
                         return attr.HandlerType;
                     }
-                    else if (_coreServiceInstance.__customSaveDataAttributesByHandledType.TryGetValue(objectType, out var customSaveDataAttribute))
-                    {
-                        return customSaveDataAttribute.SaveHandlerType;
-                    }
+                    //else if (_coreServiceInstance.__customSaveDataAttributesByHandledType.TryGetValue(objectType, out var customSaveDataAttribute))
+                    //{
+                    //    return customSaveDataAttribute.SaveHandlerType;
+                    //}
                     else
                     {
                         return null;
                     }
                 }
-            }
-
-
-            public Type GetSaveHandlerTypeFrom(Type objectType)
-            {
-                InitServiceIfNeeded();
-
-                if (__saveHandlerTypeByHandledObjectTypeLookUp.TryGetValue(objectType, out var handlerType))
-                {
-                    return handlerType;
-                }
-
-                if (objectType.IsGenericType)
-                {
-                    Type objectTypeDef = objectType.GetGenericTypeDefinition();
-
-
-                    if (__genericSaveHandlerCreatorsByTypePerTypeDef.TryGetValue(objectTypeDef, out var tuple))
-                    {
-                        Type handlerTypeDef = tuple.typeDef;
-
-                        var objectTypeArgs = objectType.GetGenericArguments();
-
-                        Type constructedGenericHandlerType = handlerTypeDef.MakeGenericType(objectTypeArgs);
-
-                        __saveHandlerTypeByHandledObjectTypeLookUp.Add(objectType, constructedGenericHandlerType);
-
-                        return constructedGenericHandlerType;
-                    }
-                }
-                else if (objectType.IsArray)
-                {
-                    Type elementType = objectType.GetElementType();
-                    int dimRank = objectType.GetArrayRank();
-
-
-                    if (__arraySaveHandlerCreatorsByTypePerDimension.TryGetValue(dimRank, out var tuple))
-                    {
-                        Type handlerTypeDef = tuple.saveHandlerTypeDef;
-
-                        var objectTypeArgs = new Type[] { elementType };
-
-                        Type constructedGenericHandlerType = handlerTypeDef.MakeGenericType(objectTypeArgs);
-
-                        __saveHandlerTypeByHandledObjectTypeLookUp.Add(objectType, constructedGenericHandlerType);
-
-                        return constructedGenericHandlerType;
-                    }
-                }
-
-                return null;
-
             }
 
 
@@ -2027,7 +1975,7 @@ namespace Assets._Project.Scripts.SaveAndLoad
         }
 
 
-
+        //todo: remove refernces and cleanup this
         public Type GetSaveHandlerTypeFrom(Type objectType)
         {
             //I actually dont know what workflow causes this method to be called

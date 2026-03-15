@@ -4,7 +4,7 @@ using System.Collections.Generic;
 using Theblueway.Tools.Editor;
 using UnityEngine;
 using Theblueway.Core.Runtime.Extensions;
-using Theblueway.Core.Runtime.Packages.com.blueutils.core.Runtime.Debugging.Logging;
+using Theblueway.Core.Runtime.Debugging.Logging;
 
 namespace Theblueway.SaveAndLoad.Editor
 {

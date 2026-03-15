@@ -15,7 +15,7 @@ using System.Reflection;
 using System.Runtime.CompilerServices;
 using Theblueway.CodeGen.Runtime;
 using Theblueway.Core.Runtime.Extensions;
-using Theblueway.Core.Runtime.Packages.com.blueutils.core.Runtime.Debugging.Logging;
+using Theblueway.Core.Runtime.Debugging.Logging;
 using Theblueway.SaveAndLoad.Editor;
 using Theblueway.Tools.Editor;
 using UnityEditor;
@@ -910,7 +910,11 @@ public class SaveAndLoadCodeGenWindow : EditorWindow
         //Debug.Log("running codegen... Task coun: " + typesToHandle.Count());
 
         Queue<Type> discoveryQueue = new Queue<Type>();
-        Dictionary<Type, TypeReport> discoveredTypes = new();
+        HashSet<Type> discoveredTypes = new();
+
+        Dictionary<(Type type, bool isStatic), TypeReport> typeReportsByLogicalTypes = new();
+
+
 
 
         foreach (var type in typesToHandle)
@@ -1068,14 +1072,14 @@ public class SaveAndLoadCodeGenWindow : EditorWindow
 
                 //this is the first time we encounter this gen type def
                 if (!_userSettings.TypeDiscoverySettings.IgnoreGenericTypeConstraints)
-                    if (!discoveredTypes.ContainsKey(type))
+                    if (!discoveredTypes.Contains(type))
                         foreach (var constraint in type.GetGenericArguments().SelectMany(a => a.GetGenericParameterConstraints()))
                             discoveryQueue.Enqueue(constraint);
             }
 
 
 
-            if (discoveredTypes.ContainsKey(type)) continue;
+            if (discoveredTypes.Contains(type)) continue;
 
 
 
@@ -1201,8 +1205,8 @@ public class SaveAndLoadCodeGenWindow : EditorWindow
 
 
             //if anything fails after this, we still gain the perforamnce of not visiting this type again.
-            //if we failed ones, no reason (so far) to check it again.
-            discoveredTypes.Add(type, null);
+            //if we failed once, no reason (so far) to check it again.
+            discoveredTypes.Add(type);
 
             //Debug.Log(type.FullName);
 
@@ -1293,45 +1297,52 @@ public class SaveAndLoadCodeGenWindow : EditorWindow
             }
 
 
+            var staticReport = CreateTypeReport(type, binding);
 
-            var typeReport = CreateTypeReport(type, binding);
+
+            bool hasStaticTypeGenSettings = session.TypeGenerationSettingsRegistry.HasSettingsForHandledType(type, isStatic: true, out var _);
+
+            if (hasStaticTypeGenSettings || staticReport.HasAnyMember)
+            {
+                typeReportsByLogicalTypes.Add((type, isStatic: true), staticReport);
+            }
 
 
             if (!type.IsStatic())
             {
                 binding |= BindingFlags.Instance;
                 binding &= ~BindingFlags.Static;
+
                 var instanceReport = CreateTypeReport(type, binding);
 
-                var staticReport = typeReport;
+                typeReportsByLogicalTypes.Add((type, isStatic: false), instanceReport);
 
 
-                bool hasNoTypeGenSettings = !session.TypeGenerationSettingsRegistry.HasSettingsForHandledType(type, isStatic: true, out var _);
-
+                //var staticReport = typeReport;
 
                 //doc:
                 //we dont generate static handler if there is no static member of the handled type to reduce clutter and unnecessary types
                 //however, it is possible that the typegen configs specified for the type exclude all members
                 //we assume there is a reason the user created a config for this type, so we interpet it as an enforcement
-                if (hasNoTypeGenSettings
-                    && staticReport.FieldsReport.ValidFields.Count == 0
-                    && staticReport.Properties.Count() == 0
-                    && staticReport.Events.Count() == 0
-                    && staticReport.Methods.Count == 0)
-                {
-                    //if there is no static members, do not generate a static handler
-                    instanceReport.StaticReport = null;
-                }
-                else
-                {
-                    instanceReport.StaticReport = staticReport;
-                }
+                //if (hasNoTypeGenSettings
+                //    && staticReport.FieldsReport.ValidFields.Count == 0
+                //    && staticReport.Properties.Count() == 0
+                //    && staticReport.Events.Count() == 0
+                //    && staticReport.Methods.Count == 0)
+                //{
+                //    //if there is no static members, do not generate a static handler
+                //    instanceReport.StaticReport = null;
+                //}
+                //else
+                //{
+                //    instanceReport.StaticReport = staticReport;
+                //}
 
-                typeReport = instanceReport;
+                //typeReport = instanceReport;
             }
 
 
-            discoveredTypes[type] = typeReport;
+            //discoveredTypes[type] = typeReport;
 
 
             List<Type> GetDependencies(TypeReport typeReport)
@@ -1350,11 +1361,14 @@ public class SaveAndLoadCodeGenWindow : EditorWindow
             {
                 var dependencies = new List<Type>();
 
-                dependencies.AddRange(GetDependencies(typeReport));
-
-                if (!type.IsStatic() && typeReport.StaticReport != null)
+                if (typeReportsByLogicalTypes.TryGetValue((type, isStatic: false), out var instanceReport))
                 {
-                    dependencies.AddRange(GetDependencies(typeReport.StaticReport));
+                    dependencies.AddRange(GetDependencies(instanceReport));
+                }
+
+                if (typeReportsByLogicalTypes.TryGetValue((type, isStatic: true), out var staticReport2))
+                {
+                    dependencies.AddRange(GetDependencies(instanceReport));
                 }
 
 
@@ -1395,11 +1409,16 @@ public class SaveAndLoadCodeGenWindow : EditorWindow
 
 
 
-        Dictionary<Type, TypeReport> validatedTypes = new();
+        List<(Type, TypeReport)> validatedTypes = new();
 
         {
-            foreach ((var type, var discoveryReport) in discoveredTypes)
+            foreach ((var logicalType, var discoveryReport) in typeReportsByLogicalTypes)
             {
+                if (Validate(logicalType.type, logicalType.isStatic, discoveryReport))
+                {
+                    validatedTypes.Add((logicalType.type, discoveryReport));
+                }
+
                 bool Validate(Type type, bool isStatic, TypeReport typeReport)
                 {
 
@@ -1407,6 +1426,8 @@ public class SaveAndLoadCodeGenWindow : EditorWindow
                      && !_saveAndLoadService.IsTypeManuallyHandled_Editor(type, isStatic))
                     {
                         var handlerType = _saveAndLoadService.GetSaveHandlerTypeFrom(type, isStatic);
+                        if (handlerType == null) return true;
+
 
                         var existingMethodSignatureToIdMap = SaveAndLoadCodeInspection.GetMethodSignatureToMethodIdMap(type, isStatic: isStatic, handlerType);
                         //Debug.Log(typeReport.Methods.ToString());
@@ -1447,26 +1468,26 @@ public class SaveAndLoadCodeGenWindow : EditorWindow
                     else return true;
                 }
 
-                if (discoveryReport.IsStatic)
-                {
-                    if (Validate(type, isStatic: true, discoveryReport))
-                    {
-                        validatedTypes.Add(type, discoveryReport);
-                    }
-                }
-                else
-                {
-                    if (discoveryReport.HasStaticReport && !Validate(type, isStatic: true, discoveryReport.StaticReport))
-                    {
-                        discoveryReport.StaticReport = null;
-                    }
+                //if (discoveryReport.IsStatic)
+                //{
+                //    if (Validate(logicalType, isStatic: true, discoveryReport))
+                //    {
+                //        validatedTypes.Add((logicalType, discoveryReport));
+                //    }
+                //}
+                //else
+                //{
+                //    if (discoveryReport.HasStaticReport && !Validate(logicalType, isStatic: true, discoveryReport.StaticReport))
+                //    {
+                //        discoveryReport.StaticReport = null;
+                //    }
 
-                    if (Validate(type, isStatic: false, discoveryReport))
-                    {
-                        validatedTypes.Add(type, discoveryReport);
-                    }
-                    else if (discoveryReport.HasStaticReport) validatedTypes.Add(type, discoveryReport.StaticReport);
-                }
+                //    if (Validate(logicalType, isStatic: false, discoveryReport))
+                //    {
+                //        validatedTypes.Add((logicalType, discoveryReport));
+                //    }
+                //    else if (discoveryReport.HasStaticReport) validatedTypes.Add((logicalType, discoveryReport.StaticReport));
+                //}
             }
         }
 
@@ -1488,12 +1509,12 @@ public class SaveAndLoadCodeGenWindow : EditorWindow
         var codeGenerator = ScriptableObject.CreateInstance<SaveHandlerAutoGenerator>();
 
 
-        List<(Type type, CodeGenerationResult generationResult)> typesAndTheirgenerationResults = new();
+        List<((Type type, bool isStatic), CodeGenerationResult generationResult)> typesAndTheirgenerationResults = new();
 
         foreach ((var type, var report) in validatedTypes)
         {
             var generationResult = codeGenerator.GenerateSaveAndLoadCode(report, session);
-            typesAndTheirgenerationResults.Add((type, generationResult));
+            typesAndTheirgenerationResults.Add(((type, report.IsStatic), generationResult));
         }
 
 
@@ -1503,28 +1524,34 @@ public class SaveAndLoadCodeGenWindow : EditorWindow
             AssetDatabase.StartAssetEditing();
             //Debug.LogWarning(typesAndTheirgenerationResults.Count);
 
-            foreach ((var type, var generationResult) in typesAndTheirgenerationResults)
+            foreach ((var logicalType, var generationResult) in typesAndTheirgenerationResults)
             {
+                Type type = logicalType.type;
                 d_type = type;
 
-                _saveAndLoadService.IsTypeManuallyHandled_Editor(type, out bool hasManualInstanceHandler, out bool hasManualStaticHandler);
+
+                //_saveAndLoadService.IsTypeManuallyHandled_Editor(type, out bool hasManualInstanceHandler, out bool hasManualStaticHandler);
+                var manuallyHandled = _saveAndLoadService.IsTypeManuallyHandled_Editor(type, logicalType.isStatic);
 
 
                 List<string> parts = new();
 
-                if (!hasManualStaticHandler)
+                if (!manuallyHandled)
                 {
-                    if (generationResult.StaticHandlerInfo != null)
-                        parts.Add(generationResult.StaticHandlerInfo.GeneratedTypeText);
-                    if (generationResult.StaticSaveDataInfo != null)
-                        parts.Add(generationResult.StaticSaveDataInfo.GeneratedTypeText);
-                }
-                if (!type.IsStatic() && !hasManualInstanceHandler)
-                {
-                    parts.Insert(0, generationResult.HandlerInfo.GeneratedTypeText);
+                    if (logicalType.isStatic)
+                    {
+                        if (generationResult.StaticHandlerInfo != null)
+                            parts.Add(generationResult.StaticHandlerInfo.GeneratedTypeText);
+                        if (generationResult.StaticSaveDataInfo != null)
+                            parts.Add(generationResult.StaticSaveDataInfo.GeneratedTypeText);
+                    }
+                    else
+                    {
+                        parts.Insert(0, generationResult.HandlerInfo.GeneratedTypeText);
 
-                    if (generationResult.SaveDataInfo != null) //customsavedatas and special savehandlers, like UnityEvent derived types, dont have savedata
-                        parts.Insert(1, generationResult.SaveDataInfo.GeneratedTypeText);
+                        if (generationResult.SaveDataInfo != null) //customsavedatas and special savehandlers, like UnityEvent derived types, dont have savedata
+                            parts.Insert(1, generationResult.SaveDataInfo.GeneratedTypeText);
+                    }
                 }
 
 
@@ -1589,15 +1616,17 @@ public class SaveAndLoadCodeGenWindow : EditorWindow
                     using var reader = File.OpenText(path);
                     string originalSource = reader.ReadToEnd();
 
-                    var typeName = type.Name;
+                    //var typeName = type.Name;
 
-                    if (type.IsGenericType)
-                    {
-                        typeName = typeName.Substring(0, typeName.IndexOf('`'));
-                        typeName += "{" + new string(',', type.GetGenericArguments().Length - 1) + "}";
-                    }
+                    //if (type.IsGenericType)
+                    //{
+                    //    typeName = typeName.Substring(0, typeName.IndexOf('`'));
+                    //    typeName += "{" + new string(',', type.GetGenericArguments().Length - 1) + "}";
+                    //}
 
-                    string tag = $"/// auto-generated for <see cref=\"{typeName}\"/>";
+                    //string tag = $"/// auto-generated for <see cref=\"{typeName}\"/>";
+
+                    var (beginTag, endTag) = SaveHandlerAutoGenerator.GenerateBeginAndEndTagsForGeneratedHandlerSection(type, generationResult.HasStaticHandler);
 
 
                     int indentationLevel = 1; //it is nested so it starts at 1
@@ -1617,191 +1646,245 @@ public class SaveAndLoadCodeGenWindow : EditorWindow
 
                     var generatedTypeText = builder.BuildFile(asNestedType: true, offset: indentationLevel);
 
-                    generatedTypeText = $"#region SaveAndLoad AutoGenerated" + Environment.NewLine +
-                        tag + Environment.NewLine + Environment.NewLine +
+                    generatedTypeText =
+                        //$"#region SaveAndLoad AutoGenerated" + Environment.NewLine +
+                        beginTag + Environment.NewLine +
                         generatedTypeText + Environment.NewLine +
-                        "#endregion";
+                        endTag;
 
 
                     var originalLines = originalSource.Split(Environment.NewLine).ToList();
 
+                    var alteredLines = new List<string>(originalLines);
 
-                    var originalUsings = new HashSet<string>();
-
-                    int i = 0;
-
-                    int firstUsingLineIndex = -1;
-                    int lastCommentedLineIndex = -1;
-                    int directiveLevel = 0;
-
-                    while (i < originalLines.Count)
                     {
-                        var line = originalLines[i];
 
-                        if (line.StartsWith("//"))
-                        { lastCommentedLineIndex = i; i++; continue; } //skip file header comments
+                        var originalUsings = new HashSet<string>();
 
-                        if (line.StartsWith("#if")) directiveLevel++;
-                        if (line.StartsWith("#endif")) directiveLevel--;
-                        if (directiveLevel > 0) { i++; continue; } //skip preprocessor directives
+                        int i = 0;
 
-                        if (line.StartsWith("using "))
+                        int firstUsingLineIndex = -1;
+                        int lastCommentedLineIndex = -1;
+                        int directiveLevel = 0;
+
+                        while (i < originalLines.Count)
                         {
-                            if (firstUsingLineIndex == -1)
-                                firstUsingLineIndex = i;
+                            var line = originalLines[i];
 
-                            originalUsings.Add(line);
-                        }
-                        else if (line.Contains("{"))
-                            break;
-                        i++;
-                    }
+                            if (line.StartsWith("//"))
+                            { lastCommentedLineIndex = i; i++; continue; } //skip file header comments
 
-                    if (originalUsings.Count > 0)
-                    {
-                        foreach (var ns in builder.UsingStatements)
-                        {
-                            if (!originalUsings.Contains(ns))
+                            if (line.StartsWith("#if")) directiveLevel++;
+                            if (line.StartsWith("#endif")) directiveLevel--;
+                            if (directiveLevel > 0) { i++; continue; } //skip preprocessor directives
+
+                            if (line.StartsWith("using "))
                             {
-                                originalLines.Insert(firstUsingLineIndex, ns);
+                                if (firstUsingLineIndex == -1)
+                                    firstUsingLineIndex = i;
+
+                                originalUsings.Add(line);
+                            }
+                            else if (line.Contains("{"))
+                                break;
+                            i++;
+                        }
+
+                        if (originalUsings.Count > 0)
+                        {
+                            foreach (var ns in builder.UsingStatements)
+                            {
+                                if (!originalUsings.Contains(ns))
+                                {
+                                    alteredLines.Insert(firstUsingLineIndex, ns);
+                                }
                             }
                         }
-                    }
-                    else
-                    {
-                        //no usings found, insert after file header comments
-                        int insertIndex = lastCommentedLineIndex + 1;
-
-                        originalLines.InsertRange(insertIndex, builder.UsingStatements);
-                    }
-
-                    //not so original anymore...
-                    originalSource = string.Join(Environment.NewLine, originalLines);
-
-
-
-                    i = 0;
-
-                    while (i < originalLines.Count)
-                    {
-                        var line = originalLines[i];
-                        if (line.Contains(tag)) break;
-                        i++;
-                    }
-
-                    bool hasOldGeneratedCode = i < originalLines.Count;
-
-                    if (hasOldGeneratedCode)
-                    {
-                        //replace old generated code
-                        //finding the tag that indicates the end of generated code. Which is #endregion in this case
-
-                        int startIndex = i - 1; //step back one line to include the start of the region
-                        int endIndex = i;
-
-                        while (endIndex < originalLines.Count)
+                        else
                         {
-                            var line = originalLines[endIndex];
-                            if (line.Contains("#endregion")) break;
-                            endIndex++;
+                            //no usings found, insert after file header comments
+                            int insertIndex = lastCommentedLineIndex + 1;
+
+                            alteredLines.InsertRange(insertIndex, builder.UsingStatements);
+                        }
+                    }
+
+
+
+
+
+                    {
+                        string alteredSource = string.Join(Environment.NewLine, alteredLines);
+
+                        var (startLine, endLine) = CodeGenUtils.FindTypeDeclarationStartAndEndLineIndexInFile(type, alteredSource);
+
+                        int i = endLine-1;
+
+                        while (i > startLine)
+                        {
+                            var line = alteredLines[i];
+                            if (line.Contains("#region SaveAndLoad AutoGenerated")) break;
+                            i--;
                         }
 
-                        var beforeLines = originalLines.Take(startIndex);
-                        var afterLines = originalLines.Skip(endIndex + 1);
 
-                        fileContent = string.Join(Environment.NewLine, beforeLines) + Environment.NewLine
-                            + generatedTypeText + Environment.NewLine
-                            + string.Join(Environment.NewLine, afterLines);
-                    }
-                    else //insert code at the end of the class
-                    {
-                        void UpdateTargetTypesAsmDefFileWithSaveAndLoadReferencies()
+                        bool hasSaveAndLoadRegion = i > startLine;
+
+                        if (hasSaveAndLoadRegion)
                         {
-                            if (BlueTools.HasAsmDefFile(path, out var asmdefPath))
+                            int regionStartIndex = i;
+                            int regionEndIndex = i;
+
+
+                            while (i < endLine)
                             {
-                                var guidReferencesToAdd = new List<string>
+                                var line = alteredLines[i];
+                                if (line.Contains("#endregion")) break;
+                                i++;
+                            }
+
+                            regionEndIndex = i;
+
+                            int startIndex = regionStartIndex;
+                            int endIndex = regionEndIndex;
+
+
+                            i = regionStartIndex;
+
+                            while (i < regionEndIndex)
+                            {
+                                var line = alteredLines[i];
+                                if (line.Contains(beginTag)) break;
+                                i++;
+                            }
+
+                            bool hasOldCode = i < regionEndIndex;
+
+                            if (hasOldCode)
+                            {
+                                startIndex = i;
+
+                                while (i < regionEndIndex)
+                                {
+                                    var line = alteredLines[i];
+                                    if (line.Contains(endTag)) break;
+                                    i++;
+                                }
+
+                                endIndex = i + 1;
+                            }
+                            else
+                            {
+                                //no old code, insert the generated code before the endregion tag
+                                startIndex = regionEndIndex;
+                                endIndex = regionEndIndex - 1;
+                            }
+
+
+                            var beforeLines = alteredLines.Take(startIndex);
+                            var afterLines = alteredLines.Skip(endIndex);
+
+                            var beforeSection = string.Join(Environment.NewLine, beforeLines);
+                            var afterSection = string.Join(Environment.NewLine, afterLines);
+
+                            fileContent = beforeSection + Environment.NewLine
+                                + generatedTypeText + Environment.NewLine
+                                + afterSection;
+                        }
+                        else //insert code at the end of the class
+                        {
+                            UpdateTargetTypesAsmDefFileWithSaveAndLoadReferences();
+
+                            generatedTypeText = "#region SaveAndLoad AutoGenerated" + Environment.NewLine + Environment.NewLine +
+                                                generatedTypeText + Environment.NewLine + Environment.NewLine +
+                                                "#endregion";
+
+                            var combined = CodeGenUtils.InsertNestedTypeIntoTargetType(type, alteredSource, generatedTypeText);
+
+                            fileContent = combined;
+
+
+                            void UpdateTargetTypesAsmDefFileWithSaveAndLoadReferences()
+                            {
+                                if (BlueTools.HasAsmDefFile(path, out var asmdefPath))
+                                {
+                                    var guidReferencesToAdd = new List<string>
                                 {
                                     "GUID:6fde86d971e9f584ca799004c9e38439", //SaveAndLoad
                                     "GUID:11f9f0384cd82b14ea5d004a22a3f210", //BlueUtils.Core
                                 };
 
 
-                                {
-                                    string json = File.ReadAllText(asmdefPath);
-
-                                    JObject root;
-                                    try
                                     {
-                                        root = JObject.Parse(json);
-                                    }
-                                    catch (Exception e)
-                                    {
-                                        Debug.LogError($"Invalid asmdef JSON: {asmdefPath}\n{e}");
-                                        return;
-                                    }
+                                        string json = File.ReadAllText(asmdefPath);
 
-                                    // Ensure "references" array exists
-                                    if (root["references"] == null || root["references"].Type != JTokenType.Array)
-                                    {
-                                        root["references"] = new JArray();
-                                    }
-
-                                    var referencesArray = (JArray)root["references"];
-                                    var existing = new HashSet<string>();
-
-                                    foreach (var token in referencesArray)
-                                    {
-                                        if (token.Type == JTokenType.String)
-                                            existing.Add(token.Value<string>());
-                                    }
-
-                                    bool changed = false;
-
-                                    foreach (var guid in guidReferencesToAdd)
-                                    {
-                                        if (string.IsNullOrWhiteSpace(guid))
-                                            continue;
-
-                                        string formatted = guid.StartsWith("GUID:", StringComparison.OrdinalIgnoreCase)
-                                            ? guid
-                                            : $"GUID:{guid}";
-
-                                        if (!existing.Contains(formatted))
+                                        JObject root;
+                                        try
                                         {
-                                            referencesArray.Add(formatted);
-                                            changed = true;
+                                            root = JObject.Parse(json);
                                         }
+                                        catch (Exception e)
+                                        {
+                                            Debug.LogError($"Invalid asmdef JSON: {asmdefPath}\n{e}");
+                                            return;
+                                        }
+
+                                        // Ensure "references" array exists
+                                        if (root["references"] == null || root["references"].Type != JTokenType.Array)
+                                        {
+                                            root["references"] = new JArray();
+                                        }
+
+                                        var referencesArray = (JArray)root["references"];
+                                        var existing = new HashSet<string>();
+
+                                        foreach (var token in referencesArray)
+                                        {
+                                            if (token.Type == JTokenType.String)
+                                                existing.Add(token.Value<string>());
+                                        }
+
+                                        bool changed = false;
+
+                                        foreach (var guid in guidReferencesToAdd)
+                                        {
+                                            if (string.IsNullOrWhiteSpace(guid))
+                                                continue;
+
+                                            string formatted = guid.StartsWith("GUID:", StringComparison.OrdinalIgnoreCase)
+                                                ? guid
+                                                : $"GUID:{guid}";
+
+                                            if (!existing.Contains(formatted))
+                                            {
+                                                referencesArray.Add(formatted);
+                                                changed = true;
+                                            }
+                                        }
+
+                                        if (!changed)
+                                            return;
+
+                                        // Write back pretty-printed JSON
+                                        File.WriteAllText(
+                                            asmdefPath,
+                                            root.ToString(Formatting.Indented)
+                                        );
+
+                                        //AssetDatabase.ImportAsset(asmdefPath);
                                     }
-
-                                    if (!changed)
-                                        return;
-
-                                    // Write back pretty-printed JSON
-                                    File.WriteAllText(
-                                        asmdefPath,
-                                        root.ToString(Formatting.Indented)
-                                    );
-
-                                    //AssetDatabase.ImportAsset(asmdefPath);
                                 }
                             }
                         }
 
-                        UpdateTargetTypesAsmDefFileWithSaveAndLoadReferencies();
-
-
-                        var combined = CodeGenUtils.InsertNestedTypeIntoTargetType(type, originalSource, generatedTypeText);
-
-                        fileContent = combined;
+                        outputPath = path;
                     }
-
-                    outputPath = path;
                 }
                 else
                 {
                     fileContent = builder.BuildFile();
 
-                    string fileName = type.IsStatic() ?
+                    string fileName = logicalType.isStatic ?
                         generationResult.StaticHandlerInfo.FileName + ".cs" :
                         generationResult.HandlerInfo.FileName + ".cs";
 
@@ -1811,17 +1894,10 @@ public class SaveAndLoadCodeGenWindow : EditorWindow
 
                     Type handlerTypeToLookFor = null;
 
-                    if (!hasManualInstanceHandler)
+                    if (!manuallyHandled)
                     {
                         //it has no manual handler, but has it any? Same for static
-                        if (_saveAndLoadService.IsTypeHandled_Editor(type, false, out var handlerType))
-                        {
-                            handlerTypeToLookFor = handlerType;
-                        }
-                    }
-                    else if (!hasManualStaticHandler)
-                    {
-                        if (_saveAndLoadService.IsTypeHandled_Editor(type, true, out var handlerType))
+                        if (_saveAndLoadService.IsTypeHandled_Editor(type, logicalType.isStatic, out var handlerType))
                         {
                             handlerTypeToLookFor = handlerType;
                         }
@@ -2021,7 +2097,6 @@ public class SaveAndLoadCodeGenWindow : EditorWindow
 
     public class TypeReport
     {
-        public TypeReport StaticReport;
         public Type ReportedType;
         public GetFieldInfosReport FieldsReport;
         public IEnumerable<PropertyInfo> Properties;
@@ -2029,7 +2104,13 @@ public class SaveAndLoadCodeGenWindow : EditorWindow
         public IEnumerable<EventInfo> Events;
 
         public bool IsStatic { get; set; }
-        public bool HasStaticReport => StaticReport != null;
+
+        public bool HasNoMembers => FieldsReport.ValidFields.Count == 0
+                                    && Properties.Count() == 0
+                                    && Events.Count() == 0
+                                    && Methods.Count == 0;
+
+        public bool HasAnyMember => !HasNoMembers;
     }
 
     [Flags]
