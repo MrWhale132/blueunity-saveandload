@@ -49,16 +49,14 @@ public class SaveAndLoadCodeGenWindow : EditorWindow
 
 
 
-
-
+    public bool IsSetUp => _state != null && _userSettings != null;
 
 
 
 
     private void OnEnable()
     {
-        LoadState();
-        ValidateState();
+        EnsureState();
     }
     private void OnDisable()
     {
@@ -66,46 +64,66 @@ public class SaveAndLoadCodeGenWindow : EditorWindow
     }
 
 
+    public void EnsureState()
+    {
+        var state = LoadState();
+        if (state != null)
+        {
+            SetState(state);
+            ValidateState();
+        }
+    }
+
 
     public void SaveState()
     {
-        //Debug.Log("save state");
+        if (_state == null) return;
+
         _state._eventqueue = _eventQueue.ToList();
         _state._scrollPos = _scrollPos;
         _state._codegenTargets = _codegenTargets;
         _state._selectedIndices = _selectedIndices.ToList();
         _state._userSettings = _userSettings;
+        
         _state._selectedFolderToScan = _selectedFolderToScan;
-        EditorUtility.SetDirty(_state);
-        EditorUtility.SetDirty(_userSettings);
+
+        if (_state != null)
+            EditorUtility.SetDirty(_state);
+        if (_userSettings != null)
+            EditorUtility.SetDirty(_userSettings);
+
         AssetDatabase.SaveAssets();
     }
 
 
 
 
-    public void LoadState()
+    public SaveAndLoadCodeGenWindowState LoadState()
     {
-        var guid = AssetDatabase.FindAssets($"{nameof(SaveAndLoadCodeGenWindow)}").First();
-        var windowPath = AssetDatabase.GUIDToAssetPath(guid);
-        var dir = Path.GetDirectoryName(windowPath);
-        var statePath = Path.Combine(dir, $"{nameof(SaveAndLoadCodeGenWindowState)}.asset");
+        var guids = AssetDatabase.FindAssets($"t:{nameof(SaveAndLoadCodeGenWindowState)}");
 
-        _state = AssetDatabase.LoadAssetAtPath<SaveAndLoadCodeGenWindowState>(statePath);
-        if (_state == null)
+        if (guids.Length == 1)
         {
-            _state = CreateInstance<SaveAndLoadCodeGenWindowState>();
-            AssetDatabase.CreateAsset(_state, statePath);
-            AssetDatabase.SaveAssets();
+            string path = AssetDatabase.GUIDToAssetPath(guids[0]);
+            var state = AssetDatabase.LoadAssetAtPath<SaveAndLoadCodeGenWindowState>(path);
+
+            return state;
         }
-        _selectedFolderToScan = _state._selectedFolderToScan;
-        _userSettings = _state._userSettings;
-        _eventQueue = new ConcurrentQueue<FileSystemEventArgsDto>(_state._eventqueue);
-        _scrollPos = _state._scrollPos;
-        _codegenTargets = _state._codegenTargets;
-        _selectedIndices = new HashSet<int>(_state._selectedIndices);
+        else return null;
     }
 
+    public void SetState(SaveAndLoadCodeGenWindowState state)
+    {
+        _state = state;
+
+        _selectedFolderToScan = state._selectedFolderToScan;
+        _userSettings = state._userSettings;
+
+        _eventQueue = new ConcurrentQueue<FileSystemEventArgsDto>(state._eventqueue);
+        _scrollPos = state._scrollPos;
+        _codegenTargets = state._codegenTargets;
+        _selectedIndices = new HashSet<int>(state._selectedIndices);
+    }
 
 
 
@@ -141,6 +159,9 @@ public class SaveAndLoadCodeGenWindow : EditorWindow
     {
         if (DateTime.Now - __lastCheckedDeltaTime < TimeSpan.FromSeconds(1)) return;
         __lastCheckedDeltaTime = DateTime.Now;
+
+        if (!IsSetUp) return;
+
 
         bool changed = false;
 
@@ -182,28 +203,6 @@ public class SaveAndLoadCodeGenWindow : EditorWindow
 
 
 
-    public void EnsureTypeGenConfigs()
-    {
-        Session session = NewSession();
-
-        var typeGenConfigs = session.TypeGenerationSettingsRegistry.GatherAllScriptableConfigs();
-
-        IEnumerable<Type> configuredTypes = typeGenConfigs.Select(config => config._config.ConfiguredType).Where(t => t != null);
-
-        session.TypeGenerationSettingsRegistry.CacheInvalidate();
-
-        bool orig = session.UserSettings.ForceGenerateForUnchangedTypesToo;
-
-        session.UserSettings.ForceGenerateForUnchangedTypesToo = true;
-
-        CreateTypeReportsAndRunCodeGen(configuredTypes, session);
-
-        session.UserSettings.ForceGenerateForUnchangedTypesToo = orig;
-
-    }
-
-
-
 
 
     [MenuItem("Window/SaveAndLoad CodeGen")]
@@ -216,6 +215,112 @@ public class SaveAndLoadCodeGenWindow : EditorWindow
     private void OnGUI()
     {
         CodeGenUtils.Config = ToCodeGenConfig(_userSettings);
+
+
+        if (!IsSetUp)
+        {
+            GUILayout.Space(100);
+
+            GUILayout.BeginHorizontal();
+            GUILayout.FlexibleSpace();
+            GUILayout.BeginVertical();
+
+            if (_state == null)
+            {
+                var guids = AssetDatabase.FindAssets($"t:{nameof(SaveAndLoadCodeGenWindowState)}");
+
+                if (guids.Length > 0)
+                {
+                    if(guids.Length > 1)
+                    {
+                        Debug.Log($"There are multiple {nameof(SaveAndLoadCodeGenWindowState)} instances. There should be only one. " +
+                            $"To stop this panel reappering leave only one instance.");
+                    }
+
+
+                    ObjectField(ref _state, "Window state", labelWidth: 120);
+
+                    if (_state != null)
+                    {
+                        SetState(_state);
+                        ValidateState();
+                    }
+                    else
+                        GUILayout.Space(5);
+                }
+
+
+                if (GUILayout.Button("Create Default Window State", GUILayout.Width(200)))
+                {
+                    var path = Path.Combine("Assets", $"{nameof(SaveAndLoadCodeGenWindowState)}.asset");
+
+
+                    if (!AssetDatabase.AssetPathExists(path))
+                    {
+                        _state = CreateInstance<SaveAndLoadCodeGenWindowState>();
+                        AssetDatabase.CreateAsset(_state, path);
+                        AssetDatabase.SaveAssets();
+
+                        EditorGUIUtility.PingObject(_state);
+                        Selection.activeObject = _state;
+                    }
+                    else
+                    {
+                        var asset = AssetDatabase.LoadAssetAtPath<SaveAndLoadCodeGenWindowState>(path);
+
+                        Debug.Log($"A {nameof(SaveAndLoadCodeGenWindowState)} instance is already exists at path {path}. Use that or move it.", asset);
+
+                        EditorGUIUtility.PingObject(asset);
+                        Selection.activeObject = asset;
+                    }
+                }
+            }
+
+
+
+
+            if (_userSettings == null)
+            {
+                GUILayout.Label("A codegen settings is required.");
+
+                GUILayout.Space(5);
+
+                ObjectField(ref _userSettings, "CodeGen Settings", labelWidth: 120);
+
+                GUILayout.Space(5);
+
+                if (GUILayout.Button("Create Default Settings", GUILayout.Width(200)))
+                {
+                    var path = Path.Combine("Assets", $"{nameof(SaveAndLoadCodeGenSettings)}.asset");
+
+                    if (!AssetDatabase.AssetPathExists(path))
+                    {
+                        _userSettings = CreateInstance<SaveAndLoadCodeGenSettings>();
+                        AssetDatabase.CreateAsset(_userSettings, path);
+                        AssetDatabase.SaveAssets();
+
+                        EditorGUIUtility.PingObject(_userSettings);
+                        Selection.activeObject = _userSettings;
+                    }
+                    else
+                    {
+                        var asset = AssetDatabase.LoadAssetAtPath<SaveAndLoadCodeGenSettings>(path);
+
+                        Debug.Log($"A {nameof(SaveAndLoadCodeGenSettings)} instance is already exists at path {path}. Use that or move it.", asset);
+
+                        EditorGUIUtility.PingObject(asset);
+                        Selection.activeObject = asset;
+                    }
+                }
+            }
+
+            GUILayout.EndVertical();
+            GUILayout.FlexibleSpace();
+            GUILayout.EndHorizontal();
+
+            return;
+        }
+
 
 
 
@@ -259,17 +364,8 @@ public class SaveAndLoadCodeGenWindow : EditorWindow
 
         EditorGUILayout.BeginVertical();
 
-        EditorGUILayout.BeginHorizontal();
 
-        EditorGUILayout.LabelField("CodeGen Settings", GUILayout.Width(120));
-
-        _userSettings = (SaveAndLoadCodeGenSettings)EditorGUILayout.ObjectField(
-            _userSettings,
-            typeof(SaveAndLoadCodeGenSettings),
-            false,
-            options: GUILayout.Width(150));
-
-        EditorGUILayout.EndHorizontal();
+        ObjectField(ref _userSettings, "CodeGen Settings", labelWidth: 120);
 
 
         EditorGUILayout.Space();
@@ -566,6 +662,52 @@ public class SaveAndLoadCodeGenWindow : EditorWindow
             EditorGUILayout.EndScrollView();
         }
     }
+
+
+
+
+    public static void ObjectField<T>(ref T obj, string label, int labelWidth, int objectFieldWidth = 150) where T : UnityEngine.Object
+    {
+        EditorGUILayout.BeginHorizontal();
+
+        EditorGUILayout.LabelField(label, GUILayout.Width(labelWidth));
+
+        obj = (T)EditorGUILayout.ObjectField(
+            obj,
+            typeof(T),
+            false,
+            options: GUILayout.Width(objectFieldWidth));
+
+        EditorGUILayout.EndHorizontal();
+    }
+
+
+
+
+    public void EnsureTypeGenConfigs()
+    {
+        Session session = NewSession();
+
+        var typeGenConfigs = session.TypeGenerationSettingsRegistry.GatherAllScriptableConfigs();
+
+        IEnumerable<Type> configuredTypes = typeGenConfigs.Select(config => config._config.ConfiguredType).Where(t => t != null);
+
+        session.TypeGenerationSettingsRegistry.CacheInvalidate();
+
+        bool orig = session.UserSettings.ForceGenerateForUnchangedTypesToo;
+
+        session.UserSettings.ForceGenerateForUnchangedTypesToo = true;
+
+        CreateTypeReportsAndRunCodeGen(configuredTypes, session);
+
+        session.UserSettings.ForceGenerateForUnchangedTypesToo = orig;
+
+    }
+
+
+
+
+
 
 
 
