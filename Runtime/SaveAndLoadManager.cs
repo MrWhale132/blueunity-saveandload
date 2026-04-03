@@ -21,6 +21,12 @@ using Theblueway.SaveAndLoad.Packages.com.theblueway.saveandload.Runtime;
 using static Assets._Project.Scripts.SaveAndLoad.SaveAndLoadManager;
 using Theblueway.Core.Runtime;
 using ObjectFactory = Theblueway.Core.Runtime.ObjectFactory;
+using static Assets._Project.Scripts.SaveAndLoad.ScopedObjectDescription;
+using static Assets._Project.Scripts.SaveAndLoad.PrefabDescriptionRegistry;
+using Microsoft.CodeAnalysis;
+
+
+
 
 
 
@@ -1141,7 +1147,7 @@ namespace Assets._Project.Scripts.SaveAndLoad
                     }
                     else
                     {
-                        if (baseType != typeof(JsonConverter) 
+                        if (baseType != typeof(JsonConverter)
                             && converter.GetType().Assembly.GetName().Name != typeof(JsonConverter).Assembly.GetName().Name)
                         {
 
@@ -2904,25 +2910,6 @@ namespace Assets._Project.Scripts.SaveAndLoad
                 File.WriteAllText($"MigrationContext_{tag}_{now}.json", debugJson);
 
                 loadContext.MigrationContext = null;
-
-                //void DisposeMigrationScope()
-                //{
-                //    foreach (var id in migrationContext._saveDatasByObjectId.Keys)
-                //    {
-                //        if (_objectIdsByMigrationContext.ContainsKey(id))
-                //            _objectIdsByMigrationContext.Remove(id);
-                //        else
-                //        {
-                //            Debug.LogError($"Error during disposing migration scope after migration has finisihed. " +
-                //                $"A migration context knows about an objectId from which the migration context's containing loading context does not.\n" +
-                //                $"A loading context must know that a given objectId which migration context it belongs to. (If there is any migration)\n" +
-                //                $"This most likely means an object has been added or removed to this migration context but it does not added or removed " +
-                //                $"to its corresponding loading context");
-                //        }
-                //    }
-                //}
-
-                //DisposeMigrationScope();
             }
 
 
@@ -2995,28 +2982,6 @@ namespace Assets._Project.Scripts.SaveAndLoad
 
                         handler.CreateObject();
 
-                        //if (d_suspendLoading && !d_found)
-                        //{
-                        //var test = Component.FindAnyObjectByType<Canvas>();
-                        //if (test != null)
-                        //{
-                        //    Debug.Log(handler.HandledObjectId);
-                        //    yield return new WaitWhile(() => !d_continue);
-                        //    d_continue = false;
-                        //        d_found = true;
-                        //}
-                        //}
-
-                        //if (handler.HandledObjectId.ToString() == "956694569789028744")
-                        //{
-
-                        //    yield return new WaitWhile(() =>
-                        //    {
-                        //        return !d_continue;
-                        //    });
-
-                        //    d_continue = false;
-                        //}
 
                         AddSaveHandler(handler);//to add a savehandler it needs to have a HandledObjectId assigned, which happens in CreateObject
                     }
@@ -3434,17 +3399,89 @@ namespace Assets._Project.Scripts.SaveAndLoad
 
 
 
-    public class MemberToInstanceId
-    {
-        public RandomId memberId;
-        public RandomId instanceId;
-    }
-
     public class ArrayMemberToElementIds
     {
         public RandomId memberId;
         public List<RandomId> elementIds = new();
     }
+
+
+    public class ObjectDescriptionBase
+    {
+        public RandomId scopeId;
+        public RandomId descriptionId;
+        public RandomId parentDescriptionId;
+
+
+        public static long ComputeDescriptionHierarchyPathHash(ObjectDescriptionBase node, Dictionary<RandomId, ObjectDescriptionBase> tree, out bool success)
+        {
+            long hash = ComputeHash(node.scopeId.GetHashCode());
+
+            ObjectDescriptionBase current = node;
+
+            while (current.parentDescriptionId.IsNotDefault)
+            {
+                if (tree.TryGetValue(current.parentDescriptionId, out var parent))
+                {
+                    hash = CombineHashes(hash, parent.scopeId.GetHashCode());
+                    current = parent;
+                }
+                else
+                {
+                    Debug.LogError($"Error while computing description hierarchy path hash. Can not find parent description with id {current.parentDescriptionId} in the tree. " +
+                        $"Current node description id: {current.descriptionId}, scope id: {current.scopeId}. ");
+
+                    success = false;
+                    return hash;
+                }
+            }
+
+            success = true;
+            return hash;
+        }
+
+        public static long ComputeHash(long value)
+        {
+            long offset = 1469598103934665603; //FNV-1a (google it)
+
+            return CombineHashes(offset, value);
+        }
+
+        public static long CombineHashes(long hash1, long hash2)
+        {
+            long prime = 1099511628211;
+
+            long hash = (hash1 ^ hash2) * prime;
+
+            return hash;
+        }
+    }
+
+
+    public class ScopedObjectDescription : ObjectDescriptionBase
+    {
+        public List<MemberToInstanceId> members = new();
+
+        public class MemberToInstanceId
+        {
+            public RandomId memberId;
+            public RandomId instanceId;
+        }
+    }
+
+
+    public class ObjectDescription : ObjectDescriptionBase
+    {
+        public List<ObjectMember> members = new();
+
+        public class ObjectMember
+        {
+            public Object instance;
+            public RandomId memberId;
+        }
+    }
+
+
 
 
 
@@ -3453,15 +3490,16 @@ namespace Assets._Project.Scripts.SaveAndLoad
         public class PrefabDescription
         {
             public RandomId prefabAssetId;
-            public List<MemberToInstanceId> memberToInstanceIds = new();
-            public List<ArrayMemberToElementIds> arrayMemberToElementIdsList = new();
+            public List<ScopedObjectDescription> descriptions;
         }
+
 
         public Dictionary<RandomId, PrefabDescription> _prefabDescriptionByPrefabPartInstanceId = new();
 
         public Dictionary<RandomId, object> _prefabPartsByInstanceId = new();
 
         public Dictionary<LoadContext, HashSet<RandomId>> _instantiatedPrefabPartsByLoadContext = new();
+
 
 
         public PrefabDescriptionRegistry()
@@ -3472,7 +3510,6 @@ namespace Assets._Project.Scripts.SaveAndLoad
 
         public void DisposeScope(LoadContext context)
         {
-            ///
             if (_instantiatedPrefabPartsByLoadContext.TryGetValue(context, out var prefabParts))
             {
                 foreach (var id in prefabParts)
@@ -3485,6 +3522,9 @@ namespace Assets._Project.Scripts.SaveAndLoad
                         //BlueDebug.Debug((id, obj.name, obj.GetType().Name));
                         Infra.S.Destroy(obj);
                     }
+
+
+                    //_prefabDescriptionByPrefabPartInstanceId.Remove(id);
                 }
 
                 _instantiatedPrefabPartsByLoadContext.Remove(context);
@@ -3499,6 +3539,10 @@ namespace Assets._Project.Scripts.SaveAndLoad
             _prefabDescriptionByPrefabPartInstanceId.Remove(instanceId);
             _prefabPartsByInstanceId.Remove(instanceId);
         }
+
+
+
+
 
 
         public bool IsPartOfPrefab<T>(RandomId instanceId, out T instance)
@@ -3547,6 +3591,17 @@ namespace Assets._Project.Scripts.SaveAndLoad
         }
 
 
+
+
+
+
+
+
+
+        public List<ObjectDescription> _objectDescriptionsBuffer = new();
+
+
+
         public void _CollectPrefabParts(RandomId prefabPartInstanceId)
         {
             LoadContext loadContext = SaveAndLoadManager.S.GetLoadContextOf(prefabPartInstanceId);
@@ -3556,10 +3611,9 @@ namespace Assets._Project.Scripts.SaveAndLoad
                 _instantiatedPrefabPartsByLoadContext.Add(loadContext, new());
             }
 
+            var prefabDesc = _prefabDescriptionByPrefabPartInstanceId[prefabPartInstanceId];
 
-            var desc = _prefabDescriptionByPrefabPartInstanceId[prefabPartInstanceId];
-
-            var prefab = AddressableDb.Singleton.GetAssetByIdOrFallback<GameObject>(null, ref desc.prefabAssetId);
+            var prefab = AddressableDb.Singleton.GetAssetByIdOrFallback<GameObject>(null, ref prefabDesc.prefabAssetId);
 
 
             SaveAndLoadManager.Singleton.ExpectingIsObjectLoadingRequest = true;
@@ -3578,139 +3632,185 @@ namespace Assets._Project.Scripts.SaveAndLoad
                     $"Solution: add a {nameof(GOInfra)} component to the root of the prefab (and set it up correctly).");
             }
 
-            var results = infra.CollectPrefabParts();
 
-            Dictionary<RandomId, object> prefabPartsByPrefabPartId = new();
-            Dictionary<RandomId, List<object>> arrayElementsByArrayMemberId = new();
+            var objectDescriptions = _objectDescriptionsBuffer;
+
+            objectDescriptions.Clear();
+
+            infra.DescribePrefab(objectDescriptions);
 
 
-            //flatten out the list of lists
-            foreach (var result in results)
+            Dictionary<long, object> membersByHashedDescriptionHierarchyPath = new();
+
+            Dictionary<RandomId, ObjectDescriptionBase> lookup = objectDescriptions.ToDictionary(d => d.descriptionId, d => (ObjectDescriptionBase)d);
+
+            foreach (var description in objectDescriptions)
             {
-                foreach (var (id, member) in result.membersById)
+                long pathHash = ObjectDescriptionBase.ComputeDescriptionHierarchyPathHash(description, lookup, out bool success);
+
+                if (!success)
                 {
-                    prefabPartsByPrefabPartId.Add(id, member);
-                }
-                foreach (var arrayPair in result.arrayElementMembersByArrayMemberId)
-                {
-                    arrayElementsByArrayMemberId.Add(arrayPair.Key, arrayPair.Value);
-                }
-            }
-
-
-            foreach (var idPair in desc.memberToInstanceIds)
-            {
-                var part2 = prefabPartsByPrefabPartId[idPair.memberId];
-
-                _prefabPartsByInstanceId.Add(idPair.instanceId, part2);
-                _instantiatedPrefabPartsByLoadContext[loadContext].Add(idPair.instanceId);
-            }
-
-            foreach (var arrayPair in desc.arrayMemberToElementIdsList)
-            {
-                var elements = arrayElementsByArrayMemberId[arrayPair.memberId];
-
-                for (int i = 0; i < arrayPair.elementIds.Count; i++)
-                {
-                    var elementId = arrayPair.elementIds[i];
-                    if (i >= elements.Count)
-                    {
-                        Debug.LogError("Mismatch in number of array elements found in prefab instance and the number of element Ids stored in PrefabDescription. " +
-                            $"GameObject: {instance.HierarchyPath()}, Prefab asset id: {desc.prefabAssetId}, array member id: {arrayPair.memberId}. " +
-                            $"Going to skip the rest of the elements.");
-
-                        var idlist = string.Join(", ", arrayPair.elementIds);
-                        var types = string.Join(", ", elements.Select(e => e.GetType().Name));
-
-                        Debug.LogError($"Element Ids: {idlist}");
-                        Debug.LogError($"Element types: {types}");
-                        break;
-                    }
-                    var element = elements[i];
-
-                    _prefabPartsByInstanceId.Add(elementId, element);
-                    _instantiatedPrefabPartsByLoadContext[loadContext].Add(elementId);
-                }
-            }
-        }
-
-
-
-        public void Register(GOInfra infra, List<GraphWalkingResult> results)
-        {
-            var idPairs = new List<MemberToInstanceId>();
-            var arraysAndTheirElementIds = new List<ArrayMemberToElementIds>();
-
-
-            foreach (var result in results)
-            {
-                for (int i = 0; i < result.memberIds.Count; i++)
-                {
-                    var pair = new MemberToInstanceId()
-                    {
-                        memberId = result.memberIds[i],
-                        instanceId = result.generatedIds[i],
-                    };
-
-                    idPairs.Add(pair);
-                }
-
-                if (result.arrayMemberIds.IsNotNullAndNotEmpty())
-                    for (int i = 0; i < result.arrayMemberIds.Count; i++)
-                    {
-                        var pair = new ArrayMemberToElementIds()
-                        {
-                            memberId = result.arrayMemberIds[i],
-                            elementIds = result.arrayElementMemberIdsPerArrayMembers[i],
-                        };
-
-                        arraysAndTheirElementIds.Add(pair);
-                    }
-            }
-
-
-
-
-            var description = new PrefabDescription()
-            {
-                prefabAssetId = infra.PrefabAssetId,
-                memberToInstanceIds = idPairs,
-                arrayMemberToElementIdsList = arraysAndTheirElementIds,
-            };
-
-            //Debug.Log(infra.gameObject.HierarchyPath());
-
-            //        Debug.Log(string.Join(", ", _prefabDescriptionByPrefabPartInstanceId.Keys));
-            //        Debug.Log(string.Join(", ", instanceIds));
-
-
-            foreach (var pair in idPairs)
-            {
-                var id = pair.instanceId;
-
-                if (_prefabDescriptionByPrefabPartInstanceId.ContainsKey(id))
-                {
-                    Debug.LogError("Duplicate instance id registration in PrefabDescriptionRegistry. " +
-                        $"Duplicate instance Id: {id} of memberId: {pair.memberId}");
+                    Debug.LogError($"Failed to compute path hash for object description with id {description.descriptionId} and scope id {description.scopeId}. " +
+                        $"This means there is likely an error in the parentDescriptionId of one of the descriptions in the prefab. " +
+                        $"Prefab asset id: {prefabDesc.prefabAssetId}, instanceId that triggered the prefab creation: {prefabPartInstanceId}.", infra);
                     continue;
                 }
-                _prefabDescriptionByPrefabPartInstanceId.Add(id, description);
-            }
 
-            foreach (var pair in arraysAndTheirElementIds)
-            {
-                foreach (var id in pair.elementIds)
+
+                if (description.members.IsNotNullAndNotEmpty())
                 {
-                    if (_prefabDescriptionByPrefabPartInstanceId.ContainsKey(id))
+                    foreach (var member in description.members)
                     {
-                        Debug.LogError("Duplicate instance id registration in PrefabDescriptionRegistry. " +
-                            $"Duplicate instance Id: {id} of memberId: {pair.memberId}");
-                        continue;
+                        long memberHash = ObjectDescriptionBase.CombineHashes(pathHash, member.memberId.GetHashCode());
+
+                        if (membersByHashedDescriptionHierarchyPath.ContainsKey(memberHash))
+                        {
+                            Debug.LogError($"Hash collision detected while collecting prefab parts. " +
+                                $"Description id: {description.descriptionId}, scope id: {description.scopeId}, member id: {member.memberId}. " +
+                                $"Prefab asset id: {prefabDesc.prefabAssetId}, instanceId that triggered the prefab creation: {prefabPartInstanceId}. " +
+                                $"This means that there are two different members in the prefab that have the same computed hash, which should be very unlikely. "
+                                , infra);
+                        }
+                        else
+                        {
+                            membersByHashedDescriptionHierarchyPath.Add(memberHash, member.instance);
+                        }
                     }
-                    _prefabDescriptionByPrefabPartInstanceId.Add(id, description);
                 }
             }
+
+
+
+
+            Dictionary<RandomId, long> prefabPartInstanceIdsToHashedDescriptionHierarchyPath = new();
+
+            Dictionary<RandomId, ObjectDescriptionBase> scopedDescriptionsLookup = prefabDesc.descriptions.ToDictionary(d => d.descriptionId, d => (ObjectDescriptionBase)d);
+
+            foreach (var description in prefabDesc.descriptions)
+            {
+                long pathHash = ObjectDescriptionBase.ComputeDescriptionHierarchyPathHash(description, scopedDescriptionsLookup, out bool success);
+
+                if (!success)
+                {
+                    Debug.LogError($"Failed to compute path hash for scoped object description with id {description.descriptionId} and scope id {description.scopeId}. " +
+                        $"This means there is likely an error in the parentDescriptionId of one of the descriptions in the prefab. " +
+                        $"Prefab asset id: {prefabDesc.prefabAssetId}, instanceId that triggered the prefab creation: {prefabPartInstanceId}.", infra);
+                    continue;
+                }
+
+
+                if (description.members.IsNotNullAndNotEmpty())
+                {
+                    foreach (var member in description.members)
+                    {
+                        long memberHash = ObjectDescriptionBase.CombineHashes(pathHash, member.memberId.GetHashCode());
+
+                        //if (prefabPartInstanceIdsToHashedDescriptionHierarchyPath.ContainsKey(memberHash))
+                        //{
+                        //    Debug.LogError($"Hash collision detected while collecting prefab parts. " +
+                        //        $"Description id: {description.descriptionId}, scope id: {description.scopeId}, member id: {member.memberId}. " +
+                        //        $"Prefab asset id: {prefabDesc.prefabAssetId}, instanceId that triggered the prefab creation: {prefabPartInstanceId}. " +
+                        //        $"This means that there are two different members in the prefab that have the same computed hash, which should be very unlikely. "
+                        //        , infra);
+                        //}
+                        //else
+                        {
+                            prefabPartInstanceIdsToHashedDescriptionHierarchyPath.Add(member.instanceId, memberHash);
+                        }
+                    }
+                }
+            }
+
+
+
+            foreach (var description in prefabDesc.descriptions)
+            {
+                if (description.members.IsNotNullAndNotEmpty())
+                    foreach (var member in description.members)
+                    {
+                        object part;
+
+                        if (prefabPartInstanceIdsToHashedDescriptionHierarchyPath.TryGetValue(member.instanceId, out long hash))
+                        {
+                            if (membersByHashedDescriptionHierarchyPath.TryGetValue(hash, out part))
+                            {
+                            }
+                            else part = null;
+                        }
+                        else part = null;
+
+                        _prefabPartsByInstanceId.Add(member.instanceId, part);
+                        _instantiatedPrefabPartsByLoadContext[loadContext].Add(member.instanceId);
+                    }
+            }
         }
+
+
+
+
+        public void Register(RandomId prefabAssetId, List<ObjectDescription> objectDescriptions, out List<RandomId> registeredInstanceIds)
+        {
+            if (prefabAssetId.IsDefault)
+            {
+                Debug.LogError($"{nameof(PrefabDescriptionRegistry)}: Invalid argument is passed: {nameof(prefabAssetId)}. Value is not set. " +
+                    $"Make sure the root of the prefab is marked as prefab and a prefabAssetId is set for it, either automaticly or manually.");
+                registeredInstanceIds = null;
+                return;
+            }
+
+
+            var saveHandlerInitContext = new InitContext { isPrefabPart = true };
+
+
+            List<ScopedObjectDescription> scopedObjectDescriptions = new();
+
+            var prefabDescription = new PrefabDescription
+            {
+                prefabAssetId = prefabAssetId,
+                descriptions = scopedObjectDescriptions,
+            };
+
+
+            registeredInstanceIds = new();
+
+
+            foreach (var description in objectDescriptions)
+            {
+                List<MemberToInstanceId> memberToInstanceIds = new();
+
+                if (description.members.IsNotNullAndNotEmpty())
+                {
+                    foreach (var member in description.members)
+                    {
+                        if (Infra.S.IsNotRegistered(member.instance))
+                        {
+                            var id = Infra.Singleton.Register(member.instance, context: saveHandlerInitContext, rootObject: false, createSaveHandler: true);
+
+                            registeredInstanceIds.Add(id);
+
+                            memberToInstanceIds.Add(new() { instanceId = id, memberId = member.memberId });
+
+                            _prefabDescriptionByPrefabPartInstanceId.Add(id, prefabDescription);
+                        }
+                    }
+                }
+
+
+                var scopedDescription = new ScopedObjectDescription
+                {
+                    parentDescriptionId = description.parentDescriptionId,
+                    scopeId = description.scopeId,
+                    descriptionId = description.descriptionId,
+                    members = memberToInstanceIds,
+                };
+
+                scopedObjectDescriptions.Add(scopedDescription);
+            }
+        }
+
+
+
+
 
 
         [SaveHandler(id: 107204973066903000, nameof(PrefabDescriptionRegistry), typeof(PrefabDescriptionRegistry), order: -90, singleton: true)]
@@ -3720,49 +3820,38 @@ namespace Assets._Project.Scripts.SaveAndLoad
             {
                 base.WriteSaveData();
 
-                __saveData._prefabDescriptionByPrefabPartInstanceId = GetObjectId(__instance._prefabDescriptionByPrefabPartInstanceId, setLoadingOrder: true);
+                __saveData._prefabDescriptions = __instance._prefabDescriptionByPrefabPartInstanceId.Values.ToHashSet().ToList();
             }
 
 
             public override void LoadPhase1()
             {
                 base.LoadPhase1();
-                __instance._prefabDescriptionByPrefabPartInstanceId = GetObjectById<Dictionary<RandomId, PrefabDescription>>(__saveData._prefabDescriptionByPrefabPartInstanceId);
+
+                var loadContext = SaveAndLoadManager.S.GetLoadContextOf(__saveData._ObjectId_);
+
+
+                foreach (var prefabDescription in __saveData._prefabDescriptions)
+                {
+                    Dictionary<RandomId, ScopedObjectDescription> scopedObjectDescriptionByObjectDescriptionId = new();
+
+                    foreach (var objectDescription in prefabDescription.descriptions)
+                    {
+                        scopedObjectDescriptionByObjectDescriptionId.Add(objectDescription.descriptionId, objectDescription);
+
+                        foreach (var member in objectDescription.members)
+                        {
+                            __instance._prefabDescriptionByPrefabPartInstanceId.Add(member.instanceId, prefabDescription);
+                        }
+                    }
+
+                }
             }
         }
 
         public class PrefabDescriptionRegistrySaveData : SaveDataBase
         {
-            public RandomId _prefabDescriptionByPrefabPartInstanceId;
-        }
-
-
-
-        [SaveHandler(id: 937204973066903000, nameof(PrefabDescription), typeof(PrefabDescription))]
-        public class PrefabDescriptionSaveHandler : UnmanagedSaveHandler<PrefabDescription, PrefabDescriptionSaveData>
-        {
-            public override void WriteSaveData()
-            {
-                base.WriteSaveData();
-                __saveData.prefabAssetId = __instance.prefabAssetId;
-                __saveData.memberToInstanceIds = GetObjectId(__instance.memberToInstanceIds, setLoadingOrder: true);
-                __saveData.arrayMemberToElementIdsList = GetObjectId(__instance.arrayMemberToElementIdsList, setLoadingOrder: true);
-            }
-
-            public override void LoadPhase1()
-            {
-                base.LoadPhase1();
-                __instance.prefabAssetId = __saveData.prefabAssetId;
-                __instance.memberToInstanceIds = GetObjectById<List<MemberToInstanceId>>(__saveData.memberToInstanceIds);
-                __instance.arrayMemberToElementIdsList = GetObjectById<List<ArrayMemberToElementIds>>(__saveData.arrayMemberToElementIdsList);
-            }
-        }
-
-        public class PrefabDescriptionSaveData : SaveDataBase
-        {
-            public RandomId prefabAssetId;
-            public RandomId memberToInstanceIds;
-            public RandomId arrayMemberToElementIdsList;
+            public List<PrefabDescription> _prefabDescriptions;
         }
     }
 
@@ -3778,8 +3867,9 @@ namespace Assets._Project.Scripts.SaveAndLoad
     public class SceneDescription
     {
         public RandomId sceneId;
-        public List<MemberToInstanceId> memberToInstanceIds = new();
-        public List<ArrayMemberToElementIds> arrayMemberToElementIdsList = new();
+        public List<ScopedObjectDescription> descriptions;
+        //public List<MemberToInstanceId> memberToInstanceIds = new();
+        //public List<ArrayMemberToElementIds> arrayMemberToElementIdsList = new();
     }
 
 
@@ -3862,50 +3952,7 @@ namespace Assets._Project.Scripts.SaveAndLoad
 
             if (isScenePlaced && !_sceneObjectsById.ContainsKey(sceneObjectInstanceId))
             {
-                var desc = _sceneDescriptionBySceneObjectId[sceneObjectInstanceId];
-
-                Scene scene = Infra.SceneManagement.SceneById(desc.sceneId);
-
-                SceneInfra infra = Infra.SceneManagement.SceneInfrasBySceneHandle[scene.handle];
-
-
-                var results = infra.CollectScenePlacedObjects();
-
-                Dictionary<RandomId, object> sceneObjectsByMemberId = new();
-                Dictionary<RandomId, List<object>> arrayElementsByArrayMemberId = new();
-
-                foreach (var result in results)
-                {
-                    foreach (var idPair in result.membersById)
-                    {
-                        sceneObjectsByMemberId.Add(idPair.Key, idPair.Value);
-                    }
-                    foreach (var arrayPair in result.arrayElementMembersByArrayMemberId)
-                    {
-                        arrayElementsByArrayMemberId.Add(arrayPair.Key, arrayPair.Value);
-                    }
-                }
-
-
-                foreach (var idPair in desc.memberToInstanceIds)
-                {
-                    var part2 = sceneObjectsByMemberId[idPair.memberId];
-
-                    _sceneObjectsById.Add(idPair.instanceId, part2);
-                }
-
-                foreach (var arrayPair in desc.arrayMemberToElementIdsList)
-                {
-                    var elements = arrayElementsByArrayMemberId[arrayPair.memberId];
-
-                    for (int i = 0; i < arrayPair.elementIds.Count; i++)
-                    {
-                        var elementId = arrayPair.elementIds[i];
-                        var element = elements[i];
-
-                        _sceneObjectsById.Add(elementId, element);
-                    }
-                }
+                _CollectSceneObjectParts(sceneObjectInstanceId);
             }
 
             var part = _sceneObjectsById[sceneObjectInstanceId];
@@ -3915,80 +3962,193 @@ namespace Assets._Project.Scripts.SaveAndLoad
 
 
 
-        public void Register(SceneInfra infra, List<GraphWalkingResult> results)
+
+        public List<ObjectDescription> _objectDescriptionsBuffer = new();
+
+
+        public void _CollectSceneObjectParts(RandomId sceneObjectPartInstanceId)
         {
-            var idPairs = new List<MemberToInstanceId>();
-            var arraysAndTheirElementIds = new List<ArrayMemberToElementIds>();
+            LoadContext loadContext = SaveAndLoadManager.S.GetLoadContextOf(sceneObjectPartInstanceId);
 
-            foreach (var result in results)
+            if (!_loadedSceneObjectsByLoadContext.ContainsKey(loadContext))
             {
-                for (int i = 0; i < result.memberIds.Count; i++)
-                {
-                    var pair = new MemberToInstanceId()
-                    {
-                        memberId = result.memberIds[i],
-                        instanceId = result.generatedIds[i],
-                    };
-
-                    idPairs.Add(pair);
-                }
-
-                if (result.arrayMemberIds.IsNotNullAndNotEmpty())
-                    for (int i = 0; i < result.arrayMemberIds.Count; i++)
-                    {
-                        var pair = new ArrayMemberToElementIds()
-                        {
-                            memberId = result.arrayMemberIds[i],
-                            elementIds = result.arrayElementMemberIdsPerArrayMembers[i],
-                        };
-
-                        arraysAndTheirElementIds.Add(pair);
-                    }
+                _loadedSceneObjectsByLoadContext.Add(loadContext, new());
             }
 
 
+            var sceneDesc = _sceneDescriptionBySceneObjectId[sceneObjectPartInstanceId];
 
-            var description = new SceneDescription()
+            Scene scene = Infra.SceneManagement.SceneById(sceneDesc.sceneId);
+
+            SceneInfra infra = Infra.SceneManagement.SceneInfrasBySceneHandle[scene.handle];
+
+
+            _objectDescriptionsBuffer.Clear();
+
+            var objectDescriptions = _objectDescriptionsBuffer;
+
+            infra.CollectScenePlacedObjectDescriptions(objectDescriptions);
+
+
+            Dictionary<long, object> membersByHashedDescriptionHierarchyPath = new();
+
+            Dictionary<RandomId, ObjectDescriptionBase> lookup = objectDescriptions.ToDictionary(d => d.descriptionId, d => (ObjectDescriptionBase)d);
+
+            foreach (var description in objectDescriptions)
             {
-                sceneId = Infra.SceneManagement.SceneIdByHandle(infra.gameObject.scene.handle),
-                memberToInstanceIds = idPairs,
-                arrayMemberToElementIdsList = arraysAndTheirElementIds,
-            };
+                long pathHash = ObjectDescriptionBase.ComputeDescriptionHierarchyPathHash(description, lookup, out bool success);
 
-            //Debug.Log(infra.gameObject.HierarchyPath());
-
-            //        Debug.Log(string.Join(", ", _prefabDescriptionByPrefabPartInstanceId.Keys));
-            //        Debug.Log(string.Join(", ", instanceIds));
-
-
-            foreach (var pair in idPairs)
-            {
-                var id = pair.instanceId;
-
-                if (_sceneDescriptionBySceneObjectId.ContainsKey(id))
+                if (!success)
                 {
-                    Debug.LogError("Duplicate instance id registration in ScenePlacedObjectRegistry. " +
-                        $"Duplicate instance Id: {id} of memberId: {pair.memberId}");
+                    Debug.LogError($"Failed to compute path hash for object description with id {description.descriptionId} and scope id {description.scopeId}. " +
+                        $"This means there is likely an error in the parentDescriptionId of one of the descriptions in the prefab. " +
+                        $"Scene instance id: {sceneDesc.sceneId}, instanceId that triggered the prefab creation: {sceneObjectPartInstanceId}.", infra);
                     continue;
                 }
-                _sceneDescriptionBySceneObjectId.Add(id, description);
+
+
+                if (description.members.IsNotNullAndNotEmpty())
+                {
+                    foreach (var member in description.members)
+                    {
+                        long memberHash = ObjectDescriptionBase.CombineHashes(pathHash, member.memberId.GetHashCode());
+
+                        if (membersByHashedDescriptionHierarchyPath.ContainsKey(memberHash))
+                        {
+                            Debug.LogError($"Hash collision detected while collecting prefab parts. " +
+                                $"Description id: {description.descriptionId}, scope id: {description.scopeId}, member id: {member.memberId}. " +
+                                $"Scene instance id: {sceneDesc.sceneId}, instanceId that triggered the prefab creation: {sceneObjectPartInstanceId}. " +
+                                $"This means that there are two different members in the prefab that have the same computed hash, which should be very unlikely. "
+                                , infra);
+                        }
+                        else
+                        {
+                            membersByHashedDescriptionHierarchyPath.Add(memberHash, member.instance);
+                        }
+                    }
+                }
             }
 
-            foreach (var pair in arraysAndTheirElementIds)
+
+
+
+            Dictionary<RandomId, long> prefabPartInstanceIdsToHashedDescriptionHierarchyPath = new();
+
+            Dictionary<RandomId, ObjectDescriptionBase> scopedDescriptionsLookup = sceneDesc.descriptions.ToDictionary(d => d.descriptionId, d => (ObjectDescriptionBase)d);
+
+            foreach (var description in sceneDesc.descriptions)
             {
-                foreach (var id in pair.elementIds)
+                long pathHash = ObjectDescriptionBase.ComputeDescriptionHierarchyPathHash(description, scopedDescriptionsLookup, out bool success);
+
+                if (!success)
                 {
-                    if (_sceneDescriptionBySceneObjectId.ContainsKey(id))
-                    {
-                        Debug.LogError("Duplicate instance id registration in ScenePlacedObjectRegistry. " +
-                            $"Duplicate instance Id: {id} of memberId: {pair.memberId}");
-                        continue;
-                    }
-                    _sceneDescriptionBySceneObjectId.Add(id, description);
+                    Debug.LogError($"Failed to compute path hash for scoped object description with id {description.descriptionId} and scope id {description.scopeId}. " +
+                        $"This means there is likely an error in the parentDescriptionId of one of the descriptions in the prefab. " +
+                        $"Scene instance id: {sceneDesc.sceneId}, instanceId that triggered the prefab creation: {sceneObjectPartInstanceId}.", infra);
+                    continue;
                 }
+
+                if (description.members.IsNotNullAndNotEmpty())
+                {
+                    foreach (var member in description.members)
+                    {
+                        long memberHash = ObjectDescriptionBase.CombineHashes(pathHash, member.memberId.GetHashCode());
+
+                        //if (prefabPartInstanceIdsToHashedDescriptionHierarchyPath.ContainsKey(memberHash))
+                        //{
+                        //    Debug.LogError($"Hash collision detected while collecting prefab parts. " +
+                        //        $"Description id: {description.descriptionId}, scope id: {description.scopeId}, member id: {member.memberId}. " +
+                        //        $"Prefab asset id: {prefabDesc.prefabAssetId}, instanceId that triggered the prefab creation: {prefabPartInstanceId}. " +
+                        //        $"This means that there are two different members in the prefab that have the same computed hash, which should be very unlikely. "
+                        //        , infra);
+                        //}
+                        //else
+                        {
+                            prefabPartInstanceIdsToHashedDescriptionHierarchyPath.Add(member.instanceId, memberHash);
+                        }
+                    }
+                }
+            }
+
+
+
+            foreach (var description in sceneDesc.descriptions)
+            {
+                if (description.members.IsNotNullAndNotEmpty())
+                    foreach (var member in description.members)
+                    {
+                        object part;
+
+                        if (prefabPartInstanceIdsToHashedDescriptionHierarchyPath.TryGetValue(member.instanceId, out long hash))
+                        {
+                            if (membersByHashedDescriptionHierarchyPath.TryGetValue(hash, out part))
+                            {
+                            }
+                            else part = null;
+                        }
+                        else part = null;
+
+                        _sceneObjectsById.Add(member.instanceId, part);
+                        _loadedSceneObjectsByLoadContext[loadContext].Add(member.instanceId);
+                    }
             }
         }
 
+
+
+        public void Register(RandomId sceneId, List<ObjectDescription> objectDescriptions)
+        {
+            if (sceneId.IsDefault)
+            {
+                Debug.LogError($"{nameof(ScenePlacedObjectRegistry)}: Invalid argument is passed: {nameof(sceneId)}. Value is not set. ");
+                return;
+            }
+
+
+            var saveHandlerInitContext = new InitContext { isScenePlaced = true };
+
+
+            List<ScopedObjectDescription> scopedObjectDescriptions = new();
+
+            var prefabDescription = new SceneDescription
+            {
+                sceneId = sceneId,
+                descriptions = scopedObjectDescriptions,
+            };
+
+
+
+            foreach (var description in objectDescriptions)
+            {
+                List<MemberToInstanceId> memberToInstanceIds = new();
+
+                if (description.members.IsNotNullAndNotEmpty())
+                {
+                    foreach (var member in description.members)
+                    {
+                        if (Infra.S.IsNotRegistered(member.instance))
+                        {
+                            var id = Infra.Singleton.Register(member.instance, context: saveHandlerInitContext, rootObject: false, createSaveHandler: true);
+
+                            memberToInstanceIds.Add(new() { instanceId = id, memberId = member.memberId });
+
+                            _sceneDescriptionBySceneObjectId.Add(id, prefabDescription);
+                        }
+                    }
+                }
+
+
+                var scopedDescription = new ScopedObjectDescription
+                {
+                    parentDescriptionId = description.parentDescriptionId,
+                    scopeId = description.scopeId,
+                    descriptionId = description.descriptionId,
+                    members = memberToInstanceIds,
+                };
+
+                scopedObjectDescriptions.Add(scopedDescription);
+            }
+        }
 
 
 
@@ -4001,50 +4161,45 @@ namespace Assets._Project.Scripts.SaveAndLoad
             {
                 base.WriteSaveData();
 
-                __saveData._sceneDescriptionBySceneObjectId = GetObjectId(__instance._sceneDescriptionBySceneObjectId, setLoadingOrder: true);
+                __saveData._sceneDescriptions = __instance._sceneDescriptionBySceneObjectId.Values.Distinct().ToList();
             }
 
             public override void LoadPhase1()
             {
                 base.LoadPhase1();
-                __instance._sceneDescriptionBySceneObjectId = GetObjectById<Dictionary<RandomId, SceneDescription>>(__saveData._sceneDescriptionBySceneObjectId);
+
+
+                var loadContext = SaveAndLoadManager.S.GetLoadContextOf(__saveData._ObjectId_);
+
+
+                foreach (var scenebDescription in __saveData._sceneDescriptions)
+                {
+                    Dictionary<RandomId, ScopedObjectDescription> scopedObjectDescriptionByObjectDescriptionId = new();
+
+                    foreach (var objectDescription in scenebDescription.descriptions)
+                    {
+                        scopedObjectDescriptionByObjectDescriptionId.Add(objectDescription.descriptionId, objectDescription);
+
+                        foreach (var member in objectDescription.members)
+                        {
+                            __instance._sceneDescriptionBySceneObjectId.Add(member.instanceId, scenebDescription);
+                        }
+                    }
+
+                }
             }
         }
 
         public class ScenePlacedObjectRegistrySaveData : SaveDataBase
         {
-            public RandomId _sceneDescriptionBySceneObjectId;
-        }
-
-
-
-        [SaveHandler(id: 900204973066903000, nameof(SceneDescription), typeof(SceneDescription))]
-        public class SceneDescriptionSaveHandler : UnmanagedSaveHandler<SceneDescription, SceneDescriptionSaveData>
-        {
-            public override void WriteSaveData()
-            {
-                base.WriteSaveData();
-                __saveData.sceneId = __instance.sceneId;
-                __saveData.memberToInstanceIds = GetObjectId(__instance.memberToInstanceIds, setLoadingOrder: true);
-                __saveData.arrayMemberToElementIdsList = GetObjectId(__instance.arrayMemberToElementIdsList, setLoadingOrder: true);
-            }
-
-            public override void LoadPhase1()
-            {
-                base.LoadPhase1();
-                __instance.sceneId = __saveData.sceneId;
-                __instance.memberToInstanceIds = GetObjectById<List<MemberToInstanceId>>(__saveData.memberToInstanceIds);
-                __instance.arrayMemberToElementIdsList = GetObjectById<List<ArrayMemberToElementIds>>(__saveData.arrayMemberToElementIdsList);
-            }
-        }
-
-        public class SceneDescriptionSaveData : SaveDataBase
-        {
-            public RandomId sceneId;
-            public RandomId memberToInstanceIds;
-            public RandomId arrayMemberToElementIdsList;
+            public List<SceneDescription> _sceneDescriptions;
         }
     }
+
+
+
+
+
 
 
 

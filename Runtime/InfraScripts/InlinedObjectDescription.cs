@@ -6,6 +6,7 @@ using Theblueway.Core.Runtime.Packages.com.blueutils.core.Runtime.ScriptResource
 using Theblueway.Core;
 using UnityEngine;
 using Object = UnityEngine.Object;
+using Theblueway.Core.Runtime.DataStructures;
 
 namespace Theblueway.SaveAndLoad.Packages.com.theblueway.saveandload.Runtime.InfraScripts
 {
@@ -14,12 +15,12 @@ namespace Theblueway.SaveAndLoad.Packages.com.theblueway.saveandload.Runtime.Inf
     {
 #if UNITY_EDITOR
         [Tooltip(StringResources.ActsLikeAButton)]
-        public bool _collectSelfAndChildGameObjectsAndComponents;
+        public bool _collectMembers;
 #endif
 
         public MemberExclusionSettings memberExclusionSettings;
 
-        public List<ObjectMember> members;
+        public InheritableList<ObjectMember> members;
 
         [Serializable]
         public class ObjectMember
@@ -35,7 +36,8 @@ namespace Theblueway.SaveAndLoad.Packages.com.theblueway.saveandload.Runtime.Inf
     {
         public Object memberToExclude;
 
-        [ReadOnly]
-        public List<Object> excludedMembers;
+        //messes up the ui
+        //[ReadOnly]
+        public InheritableList<Object> excludedMembers;
     }
 }

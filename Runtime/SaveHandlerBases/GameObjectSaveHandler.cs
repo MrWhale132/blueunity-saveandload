@@ -26,7 +26,7 @@ namespace Assets._Project.Scripts.SaveAndLoad.SaveHandlerBases
         public bool ShouldRegisterComponents =>
             !IsPrefabAsset
             && (_initContext == null || (!_initContext.isPrefabPart && !_initContext.isScenePlaced))
-            && (_goInfra == null || (!_goInfra.HasPrefabParts && !_goInfra.HasSceneParts && !_goInfra.HasInlinedSceneParts && !_goInfra.HasInlinedPrefabParts));
+            && (_goInfra == null || (!_goInfra.HasInlinedSceneParts && !_goInfra.HasInlinedPrefabParts));
 
 
         public bool IsPrefabAsset => __saveData.PrefabAssetId.IsNotDefault;
@@ -129,7 +129,7 @@ namespace Assets._Project.Scripts.SaveAndLoad.SaveHandlerBases
             __saveData.isRootInScene = __instance.transform.parent == null;
             __saveData._initContext = _initContext;
             __saveData.HierarchyPath = __instance.HierarchyPath();
-
+            
             if (!IsPrefabAsset)
                 __saveData.sceneInstanceId = Infra.SceneManagement.SceneIdByHandle(__instance.scene.handle);
 

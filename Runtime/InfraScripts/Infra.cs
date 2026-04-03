@@ -482,6 +482,13 @@ namespace Assets._Project.Scripts.Infrastructure
 
 
 
+        public void Unregister(List<RandomId> ids)
+        {
+            if(ids == null) return;
+
+            for (int i = 0; i < ids.Count; i++) Unregister(ids[i]);
+        }
+
         public void Unregister(RandomId id)
         {
             if (__globalReferenceCache.TryGetValue(id, out var obj))

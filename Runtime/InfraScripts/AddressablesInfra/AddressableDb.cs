@@ -817,6 +817,8 @@ namespace Assets._Project.Scripts.Infrastructure.AddressableInfra
             //}
         }
 
+
+
         [HideInInspector]
         public List<object> _handles = new();
 
@@ -830,6 +832,17 @@ namespace Assets._Project.Scripts.Infrastructure.AddressableInfra
 
             return _GetAssetById<T>(id);
         }
+
+
+
+        public bool IsAssetIdExists(RandomId assetId)
+        {
+            bool exists = __db._id.ContainsKey(assetId);
+
+            return exists;
+        }
+
+
 
 
 
@@ -894,7 +907,7 @@ namespace Assets._Project.Scripts.Infrastructure.AddressableInfra
             else
             {
                 BlueDebug.Debug($"AddressableDb: no entry for unityId: {unityId}.\n" +
-                    $"name: {asset.name}",asset);
+                    $"name: {asset.name}", asset);
                 return null;
             }
         }
@@ -1132,7 +1145,7 @@ namespace Assets._Project.Scripts.Infrastructure.AddressableInfra
         public string name;
         public string assetPath;
         //[ReadOnly]
-        [Tooltip("The key is what will be used to load the asset from whatever provider it is configured to")]
+        [Tooltip("The key is what will be used to load the asset from whatever provider it is configured to.")]
         public string key;
     }
 
@@ -1150,22 +1163,50 @@ namespace Assets._Project.Scripts.Infrastructure.AddressableInfra
 
         public AssetEntryInfo entryInfo;
         public RandomId assetId => entryInfo.assetId;
-        public bool isValid => entryInfo != null;
+        public bool isValid {
+            get
+            {
+                if (asset == null) return false;
+
+                if (entryInfo == null) return false;
+
+                if(!AddressableDb.Singleton.IsAssetIdExists(entryInfo.assetId))
+                {
+                    Debug.LogError($"AssetEntryReference: Asset with id {entryInfo.assetId} does not exist in the database anymore. This can happen if the asset and/or its coresponding asset entry was deleted. Asset name: {entryInfo.name}", asset);
+                    return false;
+                }
+
+                return true;
+            }
+        }
 
 
 #if UNITY_EDITOR
+        public void UpdateReference()
+        {
+            if(asset == null)
+            {
+                Debug.LogError("AssetEntryRefernce: Could not update asset reference because assigned asset is null. " +
+                    "Either an asset was never assigned or the asset has beend deleted since.");
+                return;
+            }
+
+
+            entryInfo = AddressableDb.Singleton.GetAssetEntryInfo(asset);
+
+            if (entryInfo is null)
+            {
+                Debug.LogError("AssetEntryRefernce: Could not update asset reference because no asset entry found for the assigned asset.", asset);
+            }
+            else
+                _lastKnownAsset = asset;
+        }
+
         public void UpdateReferenceIfNeeded()
         {
             if (_lastKnownAsset != asset)
             {
-                entryInfo = AddressableDb.Singleton.GetAssetEntryInfo(asset);
-
-                if (entryInfo is null)
-                {
-                    Debug.LogError("AssetEntryRefernce: Could not update asset reference because no asset entry found for the assigned asset.");
-                }
-
-                _lastKnownAsset = asset;
+                UpdateReference();
             }
         }
 #endif

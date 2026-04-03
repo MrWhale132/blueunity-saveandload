@@ -4,7 +4,6 @@ using System.Collections.Generic;
 using Theblueway.Core.Editor.EditorWindows;
 using Theblueway.Core.Runtime.InspectorAttributes;
 using Theblueway.TypeBinding.Editor.TypeInterfaceScripts;
-using Theblueway.TypeBinding.Runtime.TypeInterfaceScripts;
 using UnityEditor;
 using UnityEngine;
 

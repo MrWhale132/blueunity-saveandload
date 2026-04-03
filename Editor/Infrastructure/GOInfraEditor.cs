@@ -18,12 +18,12 @@ namespace Assets._Project.Scripts.Infrastructure
 
             bool didChange = false;
 
-
+            
             static bool CheckInlinedDescription(GOInfra infra, InlinedObjectDescription description)
             {
-                if (description._collectSelfAndChildGameObjectsAndComponents)
+                if (description._collectMembers)
                 {
-                    description._collectSelfAndChildGameObjectsAndComponents = false;
+                    description._collectMembers = false;
 
                     PopulateInlinedDescription(infra, description);
 
@@ -40,6 +40,9 @@ namespace Assets._Project.Scripts.Infrastructure
                 else return false;
             }
 
+
+            
+            Undo.RecordObjects(targets, "CheckInlinedDescription");
 
             foreach (var obj in targets)
             {
@@ -66,6 +69,8 @@ namespace Assets._Project.Scripts.Infrastructure
 
             if (GUILayout.Button("Refresh Asset References"))
             {
+                Undo.RecordObjects(targets, "Refresh Asset References");
+
                 foreach (var obj in targets)
                 {
                     GOInfra infra = obj as GOInfra;
@@ -75,14 +80,24 @@ namespace Assets._Project.Scripts.Infrastructure
                 }
             }
 
-            //else if (GUILayout.Button("Add infra to all child"))
-            //{
-            //    infra.AddInfraToAllChildren();
-            //    didChange = true;
-            //}
+            else if (GUILayout.Button("Collect Child Scopes"))
+            {
+                Undo.RecordObjects(targets, "Collect Child Scopes");
+
+                foreach(var obj in targets)
+                {
+                    GOInfra infra = obj as GOInfra;
+
+                    infra.CollectImmediateChildScopes();
+
+                    SetDirty(infra);
+                }
+            }
 
             else if (GUILayout.Button("RemoveInfraFromAllChildren"))
             {
+                Undo.RecordObjects(targets, "RemoveInfraFromAllChildren");
+
                 foreach (var obj in targets)
                 {
                     GOInfra infra = obj as GOInfra;
@@ -109,12 +124,11 @@ namespace Assets._Project.Scripts.Infrastructure
 
         public static void PopulateInlinedDescription(GOInfra infra, InlinedObjectDescription description)
         {
-            if(description.members == null) description.members = new List<ObjectMember>();
+            List<ObjectMember> descriptionMembers = description.members.PersonalItems;
 
 
-            HashSet<Object> ignoredMembers = description.memberExclusionSettings.excludedMembers.ToHashSet();
+            HashSet<Object> ignoredMembers = description.memberExclusionSettings.excludedMembers.CombinedItems.ToHashSet();
 
-            var members = description.members.Where(m => m.member != null).ToList();
 
             //doc:
             //record which members were already added so we dont generate a new memberId for them.
@@ -124,13 +138,18 @@ namespace Assets._Project.Scripts.Infrastructure
 
             //additionaly: as of this the same UnityEngine.Object can run under multiple memberIds, hence the List
 
-            Dictionary<Object, List<ObjectMember>> existingDescriptionMembersByMember =
-                description.members.Where(m => m.member != null).GroupBy(m => m.member).ToDictionary(g => g.Key, g => g.ToList());
+            Dictionary<Object, List<ObjectMember>> alreadyHandledExistingDescriptionMembersByMember =
+                description.members.InheritedItems.Where(m => m.member != null).GroupBy(m => m.member).ToDictionary(g => g.Key, g => g.ToList());
+
+
+            Dictionary<Object, List<ObjectMember>> personalExistingDescriptionMembersByMember =
+                description.members.PersonalItems.Where(m => m.member != null).GroupBy(m => m.member).ToDictionary(g => g.Key, g => g.ToList());
+
 
             HashSet<Object> added = new();
 
 
-            description.members.Clear();
+            description.members.PersonalItems.Clear();
 
             var components = new List<Component>();
 
@@ -145,10 +164,15 @@ namespace Assets._Project.Scripts.Infrastructure
 
                     if (added.Contains(member)) return;
 
-
-                    if (existingDescriptionMembersByMember.ContainsKey(member))
+                    if (alreadyHandledExistingDescriptionMembersByMember.ContainsKey(member))
                     {
-                        description.members.AddRange(existingDescriptionMembersByMember[member]);
+                        return;
+                    }
+
+
+                    if (personalExistingDescriptionMembersByMember.ContainsKey(member))
+                    {
+                        description.members.PersonalItems.AddRange(personalExistingDescriptionMembersByMember[member]);
                         added.Add(member);
                     }
                     else
@@ -159,7 +183,7 @@ namespace Assets._Project.Scripts.Infrastructure
                             memberId = RandomId.New,
                         };
 
-                        description.members.Add(objectMember);
+                        description.members.PersonalItems.Add(objectMember);
                         added.Add(member);
                     }
                 }
@@ -171,12 +195,17 @@ namespace Assets._Project.Scripts.Infrastructure
 
                 foreach (var component in components) AddMember(component);
 
-                for (int i = 0; i < parent.childCount; i++) Traverse(parent.GetChild(i));
+                for (int i = 0; i < parent.childCount; i++)
+                {
+                    var child = parent.GetChild(i);
+                    if (child.GetComponent<GOInfra>() == null)
+                    {
+                        Traverse(child);
+                    }
+                }
             }
 
             Traverse(infra.transform);
-
-
         }
 
 
@@ -185,7 +214,7 @@ namespace Assets._Project.Scripts.Infrastructure
         public static void ApplyMemberExclusion(GOInfra infra, InlinedObjectDescription description)
         {
 
-            HashSet<Object> alreadyExcludedMembers = description.memberExclusionSettings.excludedMembers.ToHashSet();
+            HashSet<Object> alreadyExcludedMembers = description.memberExclusionSettings.excludedMembers.CombinedItems.ToHashSet();
 
 
             var memberToExclude = description.memberExclusionSettings.memberToExclude;
@@ -209,7 +238,7 @@ namespace Assets._Project.Scripts.Infrastructure
             relatedMembers = relatedMembers.Except(alreadyExcludedMembers).ToList();
 
 
-            description.memberExclusionSettings.excludedMembers.AddRange(relatedMembers);
+            description.memberExclusionSettings.excludedMembers.PersonalItems.AddRange(relatedMembers);
 
             PopulateInlinedDescription(infra, description);
 

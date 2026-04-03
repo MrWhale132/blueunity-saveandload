@@ -12,23 +12,14 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 46ae51ed033b10f41afc2458114b99c9, type: 3}
   m_Name: AudioSource
   m_EditorClassIdentifier: 
-  config:
-    _triggerValidate: 0
-    handlerIdOfConfiguredType: 0
-    _configuredTypeState: 0
-    _lastKnownHandlerIdOfConfiguredType: 0
-    _lastKnownTypeNameOfConfiguredType: 
-    _wasStatic: 0
-    _loadOrder: 0
-    memberConfigs: []
-    logContext: {fileID: 11400000}
   _config:
     _typeInterfaceId: 111945637836243288
     _displayTypeName: AudioSource | UnityEngine.AudioModule | UnityEngine
     __lastKnownTypeInterfaceId: 111945637836243288
     __lastKnownTypeName: UnityEngine.AudioSource, UnityEngine.AudioModule
+    _loadOrder: 0
     _memberConfigs:
-    - memberName: gamepadSpeakerOutputType
+    - memberName: GamepadSpeakerSupportsOutputType
       _memberIndex: 0
       inclusionMode: 0
       directive: UNITY_EDITOR
@@ -67,4 +58,5 @@ MonoBehaviour:
       inclusionMode: 0
       directive: UNITY_EDITOR
       _typeInterfaceId: 111945637836243288
+    logContext: {fileID: 11400000}
   _triggerSaveHandlerRegeneration: 0

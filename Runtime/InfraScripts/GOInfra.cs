@@ -16,6 +16,16 @@ using Object = UnityEngine.Object;
 using UnityEngine.UI;
 using Theblueway.Core.Runtime.Debugging.Logging;
 using Theblueway.Core.Runtime.Packages.com.blueutils.core.Runtime.Misc;
+using Theblueway.Core.Runtime.DataStructures;
+using Theblueway.Core;
+
+
+
+
+
+
+
+
 
 
 #if UNITY_EDITOR
@@ -32,12 +42,18 @@ namespace Assets._Project.Scripts.Infrastructure
         public static HashSet<GOInfra> _allInfras = new HashSet<GOInfra>();
 
 
+        //not finished feature
+        [HideInInspector]
         [Tooltip("With this toggle this instance will act like an inactive component AND will be ignored by external systems like " + nameof(SceneInfra) +
                  ".\n The primary purpose of this toggle is to test out what would happen if this component wasnt there.")]
         public bool TurnedOff;
 
 
+        [ReadOnly]
+        public bool _IsRootObject;
 
+        [ReadOnly]
+        public bool _IsScenePlaced;
 
 
 #if UNITY_EDITOR
@@ -45,28 +61,64 @@ namespace Assets._Project.Scripts.Infrastructure
         [ReadOnly]
         public string _PrefabAssetPath;
 #endif
-        public RandomIdReference ReferencedPrefabAssetId; //note: the referenced id can still be default
         public RandomId InlinedPrefabAssetId;
-        public RandomId PrefabAssetId => InlinedPrefabAssetId.IsNotDefault ? InlinedPrefabAssetId
-                                            : ReferencedPrefabAssetId != null ? ReferencedPrefabAssetId.Id : RandomId.Default;
+
+        [Tooltip("Use this to assign a prefab assetid manually if for some reason "+nameof(InlinedPrefabAssetId)+ " can not be assigned automaticly. " + nameof(InlinedPrefabAssetId) +" takes precedence.")]
+        public RandomIdReference ReferencedPrefabAssetId; //note: the referenced id can still be default
+
 
         //design decision: why two seperate descriptors for prefab and scene-placed instances?
         //Why not just one descriptor if these descriptors are not tied to specific workflows?
         //Answer: because when a prefab is dragged into a scene, you may not want to save it the same way you would a prefab instance, vica-versa.
-        public ObjectDescriptor PrefabDescriptor;
-        public ObjectDescriptor ScenePlacedDescriptor;
-
         public InlinedObjectDescription InlinedPrefabDescription;
         public InlinedObjectDescription InlinedScenePlacedDescription;
 
 
+        [NonSerialized]
+        public List<RandomId> _registeredInstanceIdsOfAuthoredObjects;
+
+
+#if UNITY_EDITOR
+        [Tooltip("Setting this will mark all components' all properties as mutable if they have an automatic shared/non-shared semantics.")]
+        public bool _markAssetsMutable;
+#endif
+
+        [Tooltip("Consider this list as read-only. Any modifications to it will be lost on next refresh")]
+        public InheritableList<AssetReferencingDisplayInfo> _assetReferences = new();
+
+
+        //todo: fucks up ui
+        //[ReadOnly]
+        [Tooltip("This list should not be editited manually. Changes to it will be lost on next refresh. This is a list of child scopes that are directly under this scope in the hierarchy. This is used to walk the hierarchy of scopes when describing or saving objects under this scope.")]
+        public InheritableList<ChildInfraScope> _immediateChildScopes;
+
+
+        //todo: conditional hide
+        [AutoGenerate]
+        [Tooltip("This field is used only if the object is a root object.")]
+        public RandomId _scopeId;
+
+
+        //todo: Tooltip
+        [ReadOnly]
+        public GOInfra _rootInfraCandidate;
+
+
+        [Header("Debug")]
+        [ReadOnly]
+        public GOInfra _parentScope;
+
+
+
+
         public bool IsPrefabRoot => PrefabAssetId.IsNotDefault;
-        public bool HasPrefabParts => PrefabDescriptor != null;
-        public bool HasSceneParts => ScenePlacedDescriptor != null;
         public bool HasInlinedPrefabParts => InlinedPrefabDescription != null;
         public bool HasInlinedSceneParts => InlinedScenePlacedDescription != null;
-        public bool HasAnySceneParts => HasSceneParts || HasInlinedSceneParts;
-        public bool HasAnyPrefabParts => HasPrefabParts || HasInlinedPrefabParts;
+        public RandomId PrefabAssetId => InlinedPrefabAssetId.IsNotDefault ? InlinedPrefabAssetId
+                                            : ReferencedPrefabAssetId != null ? ReferencedPrefabAssetId.Id : RandomId.Default;
+
+        public bool ShouldRegisterPrefabDescription => IsPrefabRoot && _IsRootObject && !_IsScenePlaced;
+
 
 
         public bool IsObjectLoading => SaveAndLoadManager.IsObjectLoading(this);
@@ -91,10 +143,10 @@ namespace Assets._Project.Scripts.Infrastructure
             {
                 if (IsPrefabRoot)
                 {
-                    DescribePrefab();
+                    DescribeAndRegisterPrefab();
                 }
 
-                bool isManaged = HasAnyPrefabParts || HasAnySceneParts;
+                bool isManaged = HasInlinedPrefabParts || HasInlinedSceneParts;
 
                 if (!isManaged)
                 {
@@ -116,7 +168,10 @@ namespace Assets._Project.Scripts.Infrastructure
 
         public void SetupUnmanagedInstance()
         {
-            Infra.Singleton.Register(gameObject, rootObject: true, createSaveHandler: true);
+            var goId = Infra.Singleton.Register(gameObject, rootObject: true, createSaveHandler: true);
+
+            _registeredInstanceIdsOfAuthoredObjects.Add(goId);
+
 
             List<Component> components = new List<Component>();
 
@@ -130,7 +185,11 @@ namespace Assets._Project.Scripts.Infrastructure
                 var registered = Infra.Singleton.IsRegistered(comp);
 
                 if (!registered)
-                    Infra.Singleton.Register(comp, rootObject: true, createSaveHandler: true);
+                {
+                    var id = Infra.Singleton.Register(comp, rootObject: true, createSaveHandler: true);
+
+                    _registeredInstanceIdsOfAuthoredObjects.Add(id);
+                }
             }
         }
 
@@ -145,8 +204,10 @@ namespace Assets._Project.Scripts.Infrastructure
         public void OnDestroy()
         {
             if (ReturnEarly) return;
+            RemoveFromSceneInfraIfNeeded();
             Unregister();
         }
+
 
         [HideInInspector]
         public bool _isUnregistered = false;
@@ -155,32 +216,39 @@ namespace Assets._Project.Scripts.Infrastructure
         public void Unregister()
         {
             if (_isUnregistered) return;
+            _isUnregistered = true;
 
 
-            List<Component> components = new List<Component>();
-
-            gameObject.GetComponents(typeof(Component), components);
-
-            for (int i = 0; i < components.Count; i++)
+            if (_registeredInstanceIdsOfAuthoredObjects.IsNotNullAndNotEmpty())
             {
-                var component = components[i];
-
-                Infra.Singleton.Unregister(component);
+                foreach (var id in _registeredInstanceIdsOfAuthoredObjects)
+                {
+                    Infra.S.Unregister(id);
+                }
             }
-            //SaveAndLoadManager.Singleton.RemoveSaveHandler(__goSaveHandler);
-
-            Infra.Singleton.Unregister(gameObject);
 
             _allInfras.Remove(this);
-            _isUnregistered = true;
         }
 
+
+
+#if UNITY_EDITOR
+
+        public void RemoveFromSceneInfraIfNeeded()
+        {
+            if (!Application.isPlaying && gameObject.transform.parent == null && SceneInfra.HasSceneInfra(gameObject, out var sceneInfra))
+            {
+                sceneInfra.RemoveRootInfra_Editor(this);
+            }
+        }
+
+#endif
 
 
         public static void AddToAllInfras(GOInfra infra)
         {
             if (_allInfras.Contains(infra)) return;
-
+            //todo: add child scopes too
             _allInfras.Add(infra);
         }
 
@@ -212,132 +280,96 @@ namespace Assets._Project.Scripts.Infrastructure
 
 
 
-        public bool DescribeSceneObject(out GraphWalkingResult result)
+        public void DescribeAndRegisterPrefab()
         {
-            bool createdDescription = false;
-            result = null;
-
-            var saveHandlerInitContext = new InitContext { isScenePlaced = true };
-
-
-            if (HasSceneParts)
-            {
-                createdDescription = true;
-
-                var walker = new ObjectMemberGraphWalker(ScenePlacedDescriptor);
-
-                result = walker.Walk(gameObject, saveHandlerInitContext);
-            }
-
-            if (HasInlinedSceneParts)
-            {
-                createdDescription = true;
-
-                if (result is null) result = new(init: true);
-
-                foreach (var memberDesc in InlinedScenePlacedDescription.members)
-                {
-                    if (memberDesc.member == null)
-                    {
-                        Debug.LogError($"A null list element found in the inlined scene member element list of gameobject: {gameObject.HierarchyPath()}.\n" +
-                            $"This is invalid and it should be removed. You can remove it manually or by triggering a recollection of members.\n" +
-                            $"Going to ignore it and continue on.");
-                        continue;
-                    }
-
-
-                    if (Infra.S.IsNotRegistered(memberDesc.member))
-                    {
-                        var id = Infra.Singleton.Register(memberDesc.member, context: saveHandlerInitContext, rootObject: false, createSaveHandler: true);
-
-                        result.memberIds.Add(memberDesc.memberId);
-                        result.generatedIds.Add(id);
-                    }
-                }
-            }
-
-            _CheckIfSelfIsRegistered(scenePlaced: true);
-
-            return createdDescription;
-        }
-
-
-
-        public void DescribePrefab()
-        {
-            //if (PrefabDescriptor == null)
-            //{
-            //    Debug.LogError($"GOInfra on GameObject '{gameObject.HierarchyPath()}' has a PrefabAssetId assigned but no PrefabDescriptor. A PrefabDescriptor is required if a PrefabAssetId is assigned.", gameObject);
-            //}
-
             RegisterAssetRefernces();
 
-            var childrenAndSelf = GetChildrenInfra(includeTurnedOff: false, includeSelf: true);
 
-            var results = new List<GraphWalkingResult>();
-
-            foreach (var child in childrenAndSelf)
+            if (_scopeId.IsDefault)
             {
-                if (child.DescribePrefab(out var result))
-                {
-                    results.Add(result);
-                }
+                //Debug.LogError($"{nameof(_scopeId)} is not set. Root {nameof(GOInfra)}s of prefabs have to have a {nameof(_scopeId)} set manually.", this);
+                Debug.LogError($"{nameof(_scopeId)} is not set. It must be set by collecting child scopes.", this); ///<see cref="CollectImmediateChildScopes()"/>
             }
 
-            _CheckIfSelfIsRegistered(prefabInstance: true);
 
-            SaveAndLoadManager.PrefabDescriptionRegistry.Register(this, results);
+            List<ObjectDescription> objectDescriptions = new();
+
+            DescribePrefab(objectDescriptions);
+
+            SaveAndLoadManager.PrefabDescriptionRegistry.Register(PrefabAssetId, objectDescriptions, out _registeredInstanceIdsOfAuthoredObjects);
+
+            _CheckIfSelfIsRegistered(prefabInstance: true);
         }
 
 
-        public bool DescribePrefab(out GraphWalkingResult result)
+        public void DescribePrefab(List<ObjectDescription> objectDescriptions)
         {
-            bool createdDescription = false;
-            result = null;
-
-            var saveHandlerInitContext = new InitContext { isPrefabPart = true };
-
-
-            if (HasPrefabParts)
+            var jumpStartDescription = new ObjectDescription
             {
-                createdDescription = true;
+                parentDescriptionId = default,
+                scopeId = default,
+                descriptionId = default,
+            };
 
-                var walker = new ObjectMemberGraphWalker(PrefabDescriptor);
 
-                result = walker.Walk(gameObject, saveHandlerInitContext);
-            }
+            DescribeObject(jumpStartDescription, _scopeId, objectDescriptions, InlinedPrefabDescription);
+        }
 
-            if (HasInlinedPrefabParts)
+
+        public void DescribeScenePlacedObject(ObjectDescription parentDescription, RandomId scopeId, List<ObjectDescription> objectDescriptions)
+        {
+            DescribeObject(parentDescription, scopeId, objectDescriptions, InlinedScenePlacedDescription);
+        }
+
+
+
+
+        public void DescribeObject(ObjectDescription parentDescription, RandomId scopeId, List<ObjectDescription> objectDescriptions, InlinedObjectDescription objectDescriptor)
+        {
+            var description = new ObjectDescription
             {
-                createdDescription = true;
+                parentDescriptionId = parentDescription.descriptionId,
+                scopeId = scopeId,
+                descriptionId = RandomId.New,
+            };
 
-                result ??= new(init: true);
 
-                foreach (var memberDesc in InlinedPrefabDescription.members)
+            if (objectDescriptor != null)
+            {
+                foreach (var member in objectDescriptor.members.CombinedItems)
                 {
-                    if (memberDesc.member == null)
+                    if (member.member == null)
                     {
-                        Debug.LogError($"A null list element found in the inlined prefab member element list of gameobject: {gameObject.HierarchyPath()}.\n" +
+                        Debug.LogError($"A null list element found in the inlined member element list of gameobject: {gameObject.HierarchyPath()}.\n" +
                             $"This is invalid and it should be removed. This most often happens when you remove a component or a child and you dont refresh " +
-                            $"the prefab member list. ({nameof(InlinedPrefabDescription)}). " +
+                            $"the member list. " +
                             $"You can remove it manually or by triggering a recollection of members.\n" +
-                            $"Going to ignore it and continue on.");
+                            $"Going to ignore it and continue on.", this);
                         continue;
                     }
 
-
-                    if (Infra.S.IsNotRegistered(memberDesc.member))
+                    var objectMember = new ObjectDescription.ObjectMember
                     {
-                        var id = Infra.Singleton.Register(memberDesc.member, context: saveHandlerInitContext, rootObject: false, createSaveHandler: true);
+                        instance = member.member,
+                        memberId = member.memberId,
+                    };
 
-                        result.memberIds.Add(memberDesc.memberId);
-                        result.generatedIds.Add(id);
-                    }
+                    description.members.Add(objectMember);
                 }
             }
 
-            return createdDescription;
+
+            objectDescriptions.Add(description);
+
+
+            foreach (var childScope in _immediateChildScopes.CombinedItems)
+            {
+                if (childScope == null || childScope.childInfra == null) continue;
+
+                childScope.childInfra.DescribeObject(description, childScope.scopeId, objectDescriptions, objectDescriptor);
+            }
         }
+
 
 
 
@@ -371,95 +403,15 @@ namespace Assets._Project.Scripts.Infrastructure
 
 
 
-        public List<ObjectMemberGraphWalker.MemberCollectionResult> CollectPrefabParts()
-        {
-            var results = new List<ObjectMemberGraphWalker.MemberCollectionResult>();
-
-            var childrenAndSelf = GetChildrenInfra(includeTurnedOff: false, includeSelf: true);
-
-            var walker = new ObjectMemberGraphWalker();
-
-            //if (HasPrefabParts)
-            //var result = walker.CollectMembersV2(gameObject, PrefabDescriptor);
-            //results.Add(result);
-
-
-            HashSet<RandomId> added = new();
-
-            foreach (var child in childrenAndSelf)
-            {
-                if (child.HasPrefabParts)
-                {
-                    var result = walker.CollectMembersV2(child.gameObject, child.PrefabDescriptor);
-
-                    results.Add(result);
-                }
-
-                if (child.HasInlinedPrefabParts)
-                {
-                    var result = new ObjectMemberGraphWalker.MemberCollectionResult(init: true);
-
-                    foreach (var memberDesc in InlinedPrefabDescription.members)
-                    {
-                        if (added.Contains(memberDesc.memberId)) Debug.LogError("ERROR: Multiple members of a prefabdescription shares the same memberid." +
-                            $"MemberId: {memberDesc.memberId}, member name: {memberDesc.member.name}, GameObject name: {gameObject.name}", gameObject);
-
-                        //this may add the same member multiple times but with different ids, which, theoretically, should not be a problem
-                        //because it doesnt matter if a member has multiple ids as long as those ids point back to the same member
-                        result.membersById.Add(memberDesc.memberId, memberDesc.member);
-
-                    }
-
-                    results.Add(result);
-                }
-            }
-
-
-            return results;
-        }
-
-
-
-        public bool CollectSceneParts(out ObjectMemberGraphWalker.MemberCollectionResult result)
-        {
-            result = null;
-
-            if (HasSceneParts)
-            {
-                var walker = new ObjectMemberGraphWalker();
-
-                result = walker.CollectMembersV2(gameObject, ScenePlacedDescriptor);
-
-                ///here we dont need to iterate children because <see cref="SceneInfra"/> calls each inidividual GOInfra
-            }
-
-            if (HasInlinedSceneParts)
-            {
-                result ??= new(init: true);
-
-                foreach (var memberDesc in InlinedScenePlacedDescription.members)
-                {
-                    if (result.membersById.ContainsKey(memberDesc.memberId)) Debug.LogError("ERROR: Multiple members of a prefabdescription shares the same memberid." +
-                        $"MemberId: {memberDesc.memberId}, member name: {memberDesc.member.name}, GameObject name: {gameObject.name}", gameObject);
-
-                    //this may add the same member multiple times but with different ids, which, theoretically, should not be a problem
-                    //because it doesnt matter if a member has multiple ids as long as those ids point back to the same member
-                    result.membersById.Add(memberDesc.memberId, memberDesc.member);
-                }
-            }
-
-            return result != null;
-        }
-
 
 
 
 
         public void RegisterAssetRefernces()
         {
-            if (_assetReferences.IsNotNullAndNotEmpty())
+            //if (_assetReferences.IsNotNullAndNotEmpty())
             {
-                foreach (var referenceInfo in _assetReferences)
+                foreach (var referenceInfo in _assetReferences.CombinedItems)
                 {
                     foreach (var assetReference in referenceInfo.references)
                     {
@@ -646,20 +598,15 @@ namespace Assets._Project.Scripts.Infrastructure
 #if UNITY_EDITOR
         [HideInInspector]
         public bool _lastKnownMarkAssetMutableValue;
-
-        [Tooltip("Setting this will mark all components all properties as mutable where they have a automatic shared/non-shared semantics.")]
-        public bool _markAssetsMutable;
 #endif
 
-        [Tooltip("Consider this list as read-only. Any modifications to it will be lost on next refresh")]
-        public List<AssetReferencingDisplayInfo> _assetReferences = new();
 
 
 
 #if UNITY_EDITOR
         public void RefreshReferencedAssets()
         {
-            _assetReferences.Clear();
+            _assetReferences.PersonalItems.Clear();
 
             List<Component> helper = new();
             List<Component> componentsToCheck = new();
@@ -751,7 +698,7 @@ namespace Assets._Project.Scripts.Infrastructure
                     }
 
                     if (referenceInfos.Count > 0)
-                        _assetReferences.Add(new AssetReferencingDisplayInfo
+                        _assetReferences.PersonalItems.Add(new AssetReferencingDisplayInfo
                         {
                             assetHolder = comp,
                             references = referenceInfos,
@@ -767,7 +714,59 @@ namespace Assets._Project.Scripts.Infrastructure
 
 
 
+        [NonSerialized]
+        public bool? _isRootInfraCached;
+        public bool IsRootInfraCached {
+            get
+            {
+                if (_isRootInfraCached == null)
+                {
+                    _isRootInfraCached = IsRootInfra;
+                }
+                return _isRootInfraCached.Value;
+            }
+        }
 
+
+        /// <summary>
+        /// The GameObject this GOInfra is attached to is considered root object if there is no other GOInfra upward in the parent hierarchy chain.
+        /// </summary>
+        public bool IsRootInfra {
+            get
+            {
+                var parentInfra = this.GetComponentInParentExcludeSelf<GOInfra>(includeInactive: true);
+
+                bool isRootInfra = parentInfra == null;
+
+                _IsRootObject = isRootInfra;
+                _isRootInfraCached = isRootInfra;
+                
+
+                return _isRootInfraCached.Value;
+            }
+        }
+
+
+
+        public bool IsScenePlaced {
+            get
+            {
+                if (!gameObject.scene.IsValid() || !gameObject.scene.isLoaded) return false;
+
+                var roots = gameObject.scene.GetRootGameObjects();
+
+                if (roots.IsNotNullAndNotEmpty())
+                {
+                    if (roots.Any(go => go.GetComponent<SceneInfra>() != null))
+                    {
+                        return true;
+                    }
+                    else
+                        return false;
+                }
+                else return false;
+            }
+        }
 
 
 
@@ -775,6 +774,9 @@ namespace Assets._Project.Scripts.Infrastructure
         private void OnValidate()
         {
             EditorValidationService.RequestValidation(this);
+
+            _IsRootObject = IsRootInfraCached;
+            _IsScenePlaced = IsScenePlaced;
         }
 
 
@@ -786,7 +788,7 @@ namespace Assets._Project.Scripts.Infrastructure
                 BlueDebug.Error($"You cant have both a {nameof(ReferencedPrefabAssetId)} and a {InlinedPrefabAssetId} at the same time.\n" +
                     $"{nameof(InlinedPrefabAssetId)} will be set to default.");
             }
-            else if (_IsPrefabasset && ReferencedPrefabAssetId == null && InlinedPrefabAssetId.IsDefault)
+            else if (IsRootInfraCached && _IsPrefabasset && ReferencedPrefabAssetId == null && InlinedPrefabAssetId.IsDefault)
             {
                 if (!gameObject.scene.isLoaded)
                 {
@@ -823,16 +825,9 @@ namespace Assets._Project.Scripts.Infrastructure
 
         private void Reset()
         {
-            if (gameObject.scene.IsValid())
+            if (gameObject.transform.parent == null && SceneInfra.HasSceneInfra(gameObject, out var sceneInfra))
             {
-                var sceneInfraGO = gameObject.scene.GetRootGameObjects().FirstOrDefault(go => go.GetComponent<SceneInfra>() != null);
-
-                if (sceneInfraGO != null)
-                {
-                    var sceneInfra = sceneInfraGO.GetComponent<SceneInfra>();
-
-                    sceneInfra.ScenePlacedGOInfras.Add(this);
-                }
+                sceneInfra.AddRootInfra_Editor(this);
             }
         }
 
@@ -862,6 +857,7 @@ namespace Assets._Project.Scripts.Infrastructure
                         {
                             ReferencedPrefabAssetId = null;
                             InlinedPrefabAssetId = RandomId.Default;
+                            _PrefabAssetPath = "";
                             break;
                         }
                     }
@@ -885,7 +881,7 @@ namespace Assets._Project.Scripts.Infrastructure
 
                 List<AssetReferenceInfo> eligibleReferences = new();
 
-                foreach (var displayInfo in _assetReferences)
+                foreach (var displayInfo in _assetReferences.PersonalItems)
                 {
                     if (displayInfo.assetHolder.GetType() == typeof(MeshFilter))
                     {
@@ -976,8 +972,194 @@ namespace Assets._Project.Scripts.Infrastructure
                 DestroyImmediate(child);
             }
         }
+
+
+
+
+        public GOInfra RootInfraCandidate {
+            get
+            {
+                if (_rootInfraCandidate == null)
+                {
+                    _rootInfraCandidate = this;
+
+                    Transform parent = transform.parent;
+
+                    while (parent != null)
+                    {
+                        if (parent.TryGetComponent<GOInfra>(out var parentInfra))
+                        {
+                            _rootInfraCandidate = parentInfra;
+                        }
+
+                        parent = parent.parent;
+                    }
+                }
+
+                return _rootInfraCandidate;
+            }
+        }
+
+        /// <summary>
+        /// This property can be used to determine if a prefab root candidate is still a root or not, because prefab roots can become non-roots if they are nested under another prefab.
+        /// </summary>
+        public bool IsRootInfraCandidateStillRoot {
+            get
+            {
+                return RootInfraCandidate.IsRootInfra;
+            }
+        }
+
+
+        public void CollectImmediateChildScopes()
+        {
+            if (_immediateChildScopes.PersonalItems == null)
+            {
+                Debug.LogError($"There isn't any list in the {nameof(_immediateChildScopes)} list chain. Add one.");
+                return;
+            }
+
+            CollectImmediateChildScopes(_immediateChildScopes);
+
+            Debug.Log("Successfully collected child scopes.");
+        }
+
+
+        public void CollectImmediateChildScopes(InheritableList<ChildInfraScope> childInfraScopes)
+        {
+            if (_scopeId.IsDefault) _scopeId = RandomId.New;
+
+
+            _ValidateAndFilterChildScopes(childInfraScopes);
+
+            var existingChildInstances = childInfraScopes.CombinedItems
+                .Where(_ChildInfraScopeFilter)
+                .Select(_ChildInfraScopeInfraInstanceSelector)
+                .ToHashSet();
+
+            var foundChildrenInfra = _FindImmediateChildInfraInstancesInHierarhcy();
+
+            CollectImmediateChildScopes(childInfraScopes.PersonalItems, existingChildInstances, foundChildrenInfra);
+        }
+
+        public void CollectImmediateChildScopes(List<ChildInfraScope> childInfraScopes,
+                                    HashSet<GOInfra> existingChildInstances,
+                                    HashSet<GOInfra> foundChildrenInfra)
+        {
+            foreach (var child in foundChildrenInfra)
+            {
+                if (existingChildInstances.Contains(child)) continue;
+
+                var scope = new ChildInfraScope
+                {
+                    childInfra = child,
+                    scopeId = RandomId.New,
+                };
+
+                childInfraScopes.Add(scope);
+
+                child._parentScope = this;
+            }
+        }
+
+
+        public HashSet<GOInfra> _FindImmediateChildInfraInstancesInHierarhcy()
+        {
+            HashSet<GOInfra> foundChildrenInfra = new();
+
+
+            void Traverse(Transform parent)
+            {
+                for (int i = 0; i < parent.childCount; i++)
+                {
+                    var child = parent.GetChild(i);
+
+                    //doc:
+                    ///every goinfra is responsible only for their "direct" children. The found child here will take care of other child infras
+                    ///deeper in the hierarchy tree (if there is any) and so on. So we break here, otherwise keep looking for direct children.
+                    if (child.TryGetComponent<GOInfra>(out var childInfra))
+                    {
+                        foundChildrenInfra.Add(childInfra);
+                    }
+                    else
+                    {
+                        Traverse(child);
+                    }
+                }
+            }
+
+            Traverse(transform);
+
+            return foundChildrenInfra;
+        }
+
+
+
+        public static bool _ChildInfraScopeFilter(ChildInfraScope childInfraScope)
+        {
+            return childInfraScope != null && childInfraScope.childInfra != null;
+        }
+
+        public static GOInfra _ChildInfraScopeInfraInstanceSelector(ChildInfraScope childInfraScope) => childInfraScope.childInfra;
+
+
+        public void _ValidateAndFilterChildScopes(InheritableList<ChildInfraScope> childInfraScopes)
+        {
+            if (childInfraScopes.PersonalItems.IsNotNullAndNotEmpty())
+            {
+                HashSet<GOInfra> handledByOthers = childInfraScopes.InheritedItems
+                    .Where(_ChildInfraScopeFilter)
+                    .Select(_ChildInfraScopeInfraInstanceSelector)
+                    .ToHashSet();
+
+                //Debug.Log(string.Join("\n", handledByOthers.Select(infra => infra.gameObject.HierarchyPath())));
+                for (int i = childInfraScopes.PersonalItems.Count - 1; i >= 0; i--)
+                {
+                    var childScope = childInfraScopes.PersonalItems[i];
+
+                    var childInfra = childScope.childInfra;
+
+                    if (childInfra == null)
+                    {
+                        Debug.LogWarning($"Removing null reference child scope with id={childScope.scopeId}");
+                        childInfraScopes.PersonalItems.RemoveAt(i);
+                        continue;
+                    }
+
+
+                    if (handledByOthers.Contains(childInfra))
+                    {
+                        BlueDebug.Debug($"Removing child scope with id={childScope.scopeId}, because it is already handled by an inherited list.", this);
+                        childInfraScopes.PersonalItems.RemoveAt(i);
+                        continue;
+                    }
+
+
+                    GOInfra parentInfra = childInfra.GetComponentInParentExcludeSelf<GOInfra>(includeInactive: true);
+
+                    if (parentInfra != this)
+                    {
+                        BlueDebug.Debug($"Part1: Removing child scope with id={childScope.scopeId}, because its parent is no longer this object.", this);
+                        BlueDebug.Debug($"Part2: Child: {childInfra.gameObject.HierarchyPath()}", childInfra);
+                        if (parentInfra == null)
+                        {
+                            Debug.Log($"Part3: New Parent: null");
+                            break;
+                        }
+                        else
+                            BlueDebug.Debug($"Part3: New Parent: {parentInfra.gameObject.HierarchyPath()}", parentInfra);
+
+                        childInfraScopes.PersonalItems.RemoveAt(i);
+                        continue;
+                    }
+                }
+            }
+        }
 #endif
 
+
+
+        //unused feature yet
         [HideInInspector]
         [ReadOnly]
         public List<Component> _cachedComponents = new();
@@ -1037,12 +1219,24 @@ namespace Assets._Project.Scripts.Infrastructure
 
 
 
+
+
         [SaveHandler(id: 67685676547, dataGroupName: nameof(GOInfra), typeof(GOInfra))]
         public class GOInfraSaveHandler : MonoSaveHandler<GOInfra, GOInfraSaveData>
         {
 
         }
     }
+
+
+    [Serializable]
+    public class ChildInfraScope
+    {
+        public GOInfra childInfra;
+        public RandomId scopeId;
+    }
+
+
 
 
     public class GOInfraSaveData : MonoSaveDataBase

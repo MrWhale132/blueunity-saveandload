@@ -8,6 +8,11 @@ namespace Theblueway.SaveAndLoad.Packages.com.theblueway.saveandload.Runtime.Uti
 {
     public static class GameObjectExtensions
     {
+        public static T GetComponentInParentExcludeSelf<T>(this Component component, bool includeInactive) where T : UnityEngine.Component
+        {
+            return component.gameObject.GetComponentInParentExcludeSelf<T>(includeInactive);
+        }
+
         public static T GetComponentInParentExcludeSelf<T>(this GameObject gameObject, bool includeInactive) where T : UnityEngine.Component
         {
             var parent = gameObject.transform.parent;
