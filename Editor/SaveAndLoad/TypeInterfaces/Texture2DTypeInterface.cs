@@ -1,20 +1,20 @@
 ﻿
 using System.Collections.Generic;
-using Theblueway.TypeBinding.Runtime.TypeInterfaceScripts;
+using Theblueway.TypeBinding.Editor.TypeInterfaceScripts;
 
 namespace Theblueway.SaveAndLoad.Runtime.Packages.com.blueutils.saveandload.Runtime.TypeInterfaces
 {
-    [TypeInterface(374880314333943428, typeof(UnityEngine.Texture))]
-    public class TextureTypeInterface:TypeInterface<UnityEngine.Texture>
+    [TypeInterface(245129840311300530, typeof(UnityEngine.Texture2D))]
+    public class Texture2DTypeInterface:TypeInterface<UnityEngine.Texture2D>
     {
         static TypeMember[] _members = new TypeMember[]
                 {
-                    (0,imageContentsHash),
+                     (0,alphaIsTransparency),
                 };
         public override IEnumerable<TypeMember> GetMembers()
         {
             return _members;
         }
-        static string imageContentsHash => nameof(UnityEngine.Texture.imageContentsHash);
+        static string alphaIsTransparency => nameof(UnityEngine.Texture2D.alphaIsTransparency);
     }
 }

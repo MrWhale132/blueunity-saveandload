@@ -1,7 +1,7 @@
 ﻿
 using System;
 using System.Collections.Generic;
-using Theblueway.TypeBinding.Runtime.TypeInterfaceScripts;
+using Theblueway.TypeBinding.Editor.TypeInterfaceScripts;
 using UnityEngine;
 using static Theblueway.CodeGen.Runtime.TypeUtils;
 
@@ -29,13 +29,12 @@ namespace Theblueway.SaveAndLoad.Runtime.TypeInterfaces
 
 #if UNITY_EDITOR
         static string gamepadSpeakerOutputType => nameof(AudioSource.GamepadSpeakerSupportsOutputType);
-#endif
-
-        static bool GamepadSpeakerSupportsOutputType(GamepadSpeakerOutputType outputType) { return default; }
+        static bool GamepadSpeakerSupportsOutputType(GamepadSpeakerOutputType outputType) { return default; } 
         static bool PlayOnGamepad(int slot) {  return default; }
         static bool DisableGamepadOutput() { return default;}
         static bool SetGamepadSpeakerMixLevel(int slot, int mixLevel) { return default;}
         static bool SetGamepadSpeakerMixLevelDefault(int slot) { return default;}
         static bool SetGamepadSpeakerRestrictedAudio(int slot, bool restricted) { return default; }
+#endif
     }
 }

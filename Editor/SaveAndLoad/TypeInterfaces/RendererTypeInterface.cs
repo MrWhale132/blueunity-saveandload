@@ -1,6 +1,6 @@
 ﻿
 using System.Collections.Generic;
-using Theblueway.TypeBinding.Runtime.TypeInterfaceScripts;
+using Theblueway.TypeBinding.Editor.TypeInterfaceScripts;
 
 namespace Theblueway.SaveAndLoad.Runtime.Packages.com.blueutils.saveandload.Runtime.TypeInterfaces
 {

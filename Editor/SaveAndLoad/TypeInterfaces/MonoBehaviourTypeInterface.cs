@@ -1,6 +1,6 @@
 ﻿
 using System.Collections.Generic;
-using Theblueway.TypeBinding.Runtime.TypeInterfaceScripts;
+using Theblueway.TypeBinding.Editor.TypeInterfaceScripts;
 using UnityEngine.UI;
 using UnityEngine;
 using static Theblueway.CodeGen.Runtime.TypeUtils;

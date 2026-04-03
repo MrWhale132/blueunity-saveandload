@@ -1,7 +1,7 @@
 ﻿#pragma warning disable 8321 // Unused local function
 using System;
 using System.Collections.Generic;
-using Theblueway.TypeBinding.Runtime.TypeInterfaceScripts;
+using Theblueway.TypeBinding.Editor.TypeInterfaceScripts;
 using UnityEngine.UI;
 using static Theblueway.CodeGen.Runtime.TypeUtils;
 
