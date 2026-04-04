@@ -11,12 +11,10 @@ using Assets._Project.Scripts.SaveAndLoad.SaveHandlerBases;
 using Theblueway.Core.Runtime.Debugging.Logging;
 
 
-
-
 #if UNITY_EDITOR
 using UnityEditor;
+using UnityEditor.AddressableAssets;
 using UnityEditor.AddressableAssets.Settings;
-using Assets._Project.Scripts.UtilScripts.Addressables;
 #endif
 
 
@@ -269,6 +267,23 @@ namespace Assets._Project.Scripts.Infrastructure.AddressableInfra
 
 
 
+        public static List<AddressableAssetEntry> GetAllAddressableEntries()
+        {
+            var settings = AddressableAssetSettingsDefaultObject.Settings;
+            var keys = new List<AddressableAssetEntry>();
+
+            foreach (var group in settings.groups)
+            {
+                if (group == null) continue;
+
+                keys.AddRange(group.entries);
+            }
+
+            return keys;
+        }
+
+
+
 
         [Tooltip("If true, will reuse existing IDs for addressables with the same asset name. " +
             "Can be used when the path of assets changed but their names not.")]
@@ -280,30 +295,6 @@ namespace Assets._Project.Scripts.Infrastructure.AddressableInfra
         public void Refresh()
         {
             InitIfNeeded();
-
-
-            //__db._unityBuiltinResource.Clear();
-            //foreach ((var name, var asset) in _unityBuiltInResourcesByExtendedName)
-            {
-                //Debug.Log(asset.name);
-                //var id = _unityBuiltInResourceExtendedNamesToObjectIdsMap[name];
-
-                //__db._unityBuiltinResource.Add(id);
-                //var unityId = GetUnityId(asset);
-
-                //var dto = new AddressableDTO
-                //{
-                //    id = id,
-                //    unityId = unityId,
-                //    assetName = name,
-                //};
-
-                //__db.Add(dto);
-            }
-            //EditorUtility.SetDirty(this); 
-            //AssetDatabase.Refresh();
-            //return;
-
 
 
             //todo: remove the ones that are not used anymore?
@@ -325,7 +316,7 @@ namespace Assets._Project.Scripts.Infrastructure.AddressableInfra
             //return;
 
 
-            var entries = AddressableUtils.GetAllAddressableEntries();
+            var entries = GetAllAddressableEntries();
 
             {
                 List<AddressableAssetEntry> subs = new List<AddressableAssetEntry>();

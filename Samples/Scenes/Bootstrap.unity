@@ -169,9 +169,6 @@ MonoBehaviour:
   _mainMenu:
     asset: {fileID: 102900000, guid: ed942d92338e7f34d9dbd711132452fd, type: 3}
     guid: ed942d92338e7f34d9dbd711132452fd
-  _worldScene:
-    asset: {fileID: 102900000, guid: 4a3e3630953bd364dbe7fcefa9014488, type: 3}
-    guid: 4a3e3630953bd364dbe7fcefa9014488
   _bootstrapScene:
     asset: {fileID: 102900000, guid: 98ffcfe83d856fb4fbfa85d8f077a02b, type: 3}
     guid: 98ffcfe83d856fb4fbfa85d8f077a02b

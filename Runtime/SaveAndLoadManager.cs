@@ -19,11 +19,11 @@ using UnityEngine.SceneManagement;
 using Object = UnityEngine.Object;
 using Theblueway.SaveAndLoad.Packages.com.theblueway.saveandload.Runtime;
 using static Assets._Project.Scripts.SaveAndLoad.SaveAndLoadManager;
-using Theblueway.Core.Runtime;
 using ObjectFactory = Theblueway.Core.Runtime.ObjectFactory;
 using static Assets._Project.Scripts.SaveAndLoad.ScopedObjectDescription;
-using static Assets._Project.Scripts.SaveAndLoad.PrefabDescriptionRegistry;
 using Microsoft.CodeAnalysis;
+using Newtonsoft.Json.Linq;
+
 
 
 
@@ -2424,6 +2424,11 @@ namespace Assets._Project.Scripts.SaveAndLoad
 
         public void Save()
         {
+            Save(new());
+        }
+
+        public void Save(object header)
+        {
             if (_saveingIsInProgress)
             {
                 Debug.LogError("A save process is already in progress. Returning.");
@@ -2431,12 +2436,12 @@ namespace Assets._Project.Scripts.SaveAndLoad
             }
 
 
-            StartCoroutine(SaveRoutine());
+            StartCoroutine(SaveRoutine(header));
 
         }
 
 
-        internal IEnumerator SaveRoutine()
+        internal IEnumerator SaveRoutine(object header)
         {
             _saveingIsInProgress = true;
 
@@ -2448,6 +2453,7 @@ namespace Assets._Project.Scripts.SaveAndLoad
             Infra.Singleton.StartNewReferenceGraph();
 
             var handlersToRemove = new List<ISaveAndLoad>();
+            var validHandlers = new List<ISaveAndLoad>();
 
 
             _ResetSaveStateMachine();
@@ -2471,6 +2477,7 @@ namespace Assets._Project.Scripts.SaveAndLoad
                     }
 
                     handler.WriteSaveData();
+                    validHandlers.Add(handler);
                 }
 
                 _MoveToNextState();
@@ -2492,13 +2499,7 @@ namespace Assets._Project.Scripts.SaveAndLoad
             foreach (var handler in handlersToRemove)
             {
                 //Debug.Log($"[Trace] Removing invalid save handler, datagroup: {handler.DataGroupId}, handled object id: {handler.HandledObjectId}");
-                //__mainSaveHandlers.Remove(handler);
                 Infra.Singleton.Unregister(handler.HandledObjectId);
-
-                //if (handler is GameObjectSaveHandler goHandler)
-                {
-                    //Debug.LogWarning(goHandler.__saveData.HierarchyPath);
-                }
             }
 
             Infra.Singleton.RemoveUnreferencedObjects();
@@ -2507,20 +2508,17 @@ namespace Assets._Project.Scripts.SaveAndLoad
 
             //todo: create an immutable snapshot of the data accesd by background tasks
 
-            var snapshot = new List<ISaveAndLoad>(__mainSaveHandlers);
-
-
             RandomId id = Infra.Singleton.GetObjectId(this, Infra.GlobalReferencing);
 
-            for (int i = 0; i < snapshot.Count; i++)
+            for (int i = 0; i < validHandlers.Count; i++)
             {
-                var handler = snapshot[i];
+                var handler = validHandlers[i];
 
                 if (handler.HandledObjectId == id)
                 {
-                    var first = snapshot[0];
-                    snapshot[0] = handler;
-                    snapshot[i] = first;
+                    var first = validHandlers[0];
+                    validHandlers[0] = handler;
+                    validHandlers[i] = first;
                     break;
                 }
             }
@@ -2532,7 +2530,12 @@ namespace Assets._Project.Scripts.SaveAndLoad
             //    snapshot.AddRange(__mainSaveHandlers);
             //}
 
-            var serTask = Task.Run(() => { return SerializeSnapshot(snapshot); });
+
+            var data = new SaveFileDataSer { };
+
+            var saveFile = new SaveFileSer { header = header, data = data };
+
+            var serTask = Task.Run(() => { return SerializeSnapshot(saveFile, validHandlers); });
 
             while (!serTask.IsCompleted)
                 yield return null;
@@ -2543,7 +2546,7 @@ namespace Assets._Project.Scripts.SaveAndLoad
                 yield break;
             }
 
-            IEnumerable<string> flatList = serTask.Result;
+            SaveFileBinary saveFileBinary = serTask.Result;
 
             //Debug.LogWarning("serialize " + stopwatch.ElapsedMilliseconds / 1000f);
 
@@ -2552,7 +2555,7 @@ namespace Assets._Project.Scripts.SaveAndLoad
 
             Debug.Log($"Saving data to {absPath}.");
 
-            var writeTask = Task.Run(() => { WriteSnapshotToDisk(absPath, flatList); });
+            var writeTask = Task.Run(() => { WriteSnapshotToDisk(absPath, saveFileBinary); });
 
 
             while (!writeTask.IsCompleted)
@@ -2577,44 +2580,35 @@ namespace Assets._Project.Scripts.SaveAndLoad
 
 
 
-        public void WriteSnapshotToDisk(string path, IEnumerable<string> snapshot)
+        public void WriteSnapshotToDisk(string path, SaveFileBinary saveFile)
         {
-            JsonUtil.WriteObjects(path, snapshot, relative: false);
+            Theblueway.Core.Runtime.FileUtil.WriteDataWithHeader(path, headerBytes: saveFile.header, dataBytes: saveFile.data, relative: false);
         }
 
 
-        public IEnumerable<string> SerializeSnapshot(IEnumerable<ISaveAndLoad> handlers)
+        public SaveFileBinary SerializeSnapshot(SaveFileSer saveFile, IEnumerable<ISaveAndLoad> saveAndLoadHandlers)
         {
-            var saveData = new Dictionary<long, List<string>>();
-
-
-            foreach (var handler in handlers)
+            foreach(var handler in saveAndLoadHandlers)
             {
-                {
-                    if (handler == null)
-                    {
-                        Debug.LogError("Save handler is null, it means it wasnt removed from save manager when the object was destroyed. " +
-                            "Skipping.");
-                        continue;
-                    }
-
-                    var data = handler.Serialize();
-
-
-                    if (!saveData.ContainsKey(handler.SaveHandlerId))
-                    {
-                        var list = new List<string>();
-                        saveData[handler.SaveHandlerId] = list;
-                    }
-
-                    saveData[handler.SaveHandlerId].Add(data);
-                }
+                handler.ArrangeSaveDataForSerialization();
             }
 
+            List<object> data = saveAndLoadHandlers.Select(x => (object)x.SaveData).ToList();
 
-            IEnumerable<string> flatList = saveData.SelectMany(x => x.Value);
+            saveFile.data.objects = data;
 
-            return flatList;
+
+            string headerJson = JsonConvert.SerializeObject(saveFile.header);
+            string dataJson = JsonConvert.SerializeObject(saveFile.data);
+
+            byte[] headerBytes = System.Text.Encoding.UTF8.GetBytes(headerJson);
+            byte[] dataBytes = System.Text.Encoding.UTF8.GetBytes(dataJson);
+            
+            return new SaveFileBinary
+            {
+                header = headerBytes,
+                data = dataBytes,
+            };
         }
 
 
@@ -2624,7 +2618,7 @@ namespace Assets._Project.Scripts.SaveAndLoad
         {
             string fileTag = DateTime.Now.ToString("yyyy-MM-dd_HH-mm-ss");
 
-            string fileName = "/savedata_" + fileTag + ".json";
+            string fileName = "/savedata_" + fileTag + ".savefile";
 
             string relPath = Paths.Singleton.WorldSavePath + fileName;
 
@@ -2658,6 +2652,36 @@ namespace Assets._Project.Scripts.SaveAndLoad
 
 
 
+
+
+        public class SaveFileDataSer
+        {
+            public IEnumerable<object> objects;
+        }
+        public class SaveFileSer
+        {
+            public object header;
+            public SaveFileDataSer data;
+        }
+
+
+
+        public class SaveFileDataDeser
+        {
+            public JArray objects;
+        }
+        public class SaveFileDeser
+        {
+            public SaveFileDataDeser data;
+        }
+
+
+
+        public class SaveFileBinary
+        {
+            public byte[] header;
+            public byte[] data;
+        }
 
 
 
@@ -2724,10 +2748,23 @@ namespace Assets._Project.Scripts.SaveAndLoad
             ISaveAndLoad thisHandler = GetSaveHandlerById<SaveHandlerBase>(thisId);
 
 
-            List<string> serializedDataList = JsonUtil.ReadObjects(saveFileAbsPath, relative: false);
+            byte[] bytes = Theblueway.Core.Runtime.FileUtil.ReadDataFromFile(saveFileAbsPath, relative: false);
+
+            string json2 = System.Text.Encoding.UTF8.GetString(bytes);
+            File.WriteAllText("c://temp/json2", json2);
+            var deserSaveFile = JsonConvert.DeserializeObject<SaveFileDataDeser>(json2);
 
 
-            var first = JsonConvert.DeserializeObject<SaveDataBase>(serializedDataList[0]);
+            List<string> deserializedDataList = new();
+
+
+            foreach(var item in deserSaveFile.objects)
+            {
+                deserializedDataList.Add(item.ToString());
+            }
+
+
+            var first = JsonConvert.DeserializeObject<SaveDataBase>(deserializedDataList[0]);
 
             if (first._MetaData_.SaveHandlerId != thisHandler.SaveHandlerId)
             {
@@ -2736,9 +2773,9 @@ namespace Assets._Project.Scripts.SaveAndLoad
                 yield break;
             }
 
-            SaveAndLoadManagerSaveData saveAndLoadManagerData = JsonConvert.DeserializeObject<SaveAndLoadManagerSaveData>(serializedDataList[0]);
+            SaveAndLoadManagerSaveData saveAndLoadManagerData = JsonConvert.DeserializeObject<SaveAndLoadManagerSaveData>(deserializedDataList[0]);
 
-            serializedDataList.RemoveAt(0);
+            deserializedDataList.RemoveAt(0);
 
 
             int pastAppVersion = saveAndLoadManagerData._appVersion;
@@ -2776,9 +2813,9 @@ namespace Assets._Project.Scripts.SaveAndLoad
             try
             {
 
-                for (int i = 0; i < serializedDataList.Count; i++)
+                for (int i = 0; i < deserializedDataList.Count; i++)
                 {
-                    var serData = serializedDataList[i];
+                    var serData = deserializedDataList[i];
                     var saveInfo = JsonConvert.DeserializeObject<SavedObject>(serData);
 
                     if (saveInfo is null or { _MetaData_: null })
@@ -2888,12 +2925,12 @@ namespace Assets._Project.Scripts.SaveAndLoad
 
 
                 //todo: optimize this
-                serializedDataList.Clear();
+                deserializedDataList.Clear();
 
                 foreach (var data in savedataList)
                 {
                     var json = JsonConvert.SerializeObject(data);
-                    serializedDataList.Add(json);
+                    deserializedDataList.Add(json);
                 }
 
 
@@ -2925,7 +2962,7 @@ namespace Assets._Project.Scripts.SaveAndLoad
             try
             {
 
-                foreach (string savedata in serializedDataList)
+                foreach (string savedata in deserializedDataList)
                 {
                     var saveInfo = JsonConvert.DeserializeObject<SavedObject>(savedata);
                     d_savedata = saveInfo;
@@ -3145,21 +3182,6 @@ namespace Assets._Project.Scripts.SaveAndLoad
 
 
 
-
-        public void Update()
-        {
-            if (Input.GetKeyDown(KeyCode.F1))
-            {
-                Debug.Log("Saving game...");
-                Save();
-            }
-
-            if (Input.GetKeyDown(KeyCode.F2))
-            {
-                //Debug.Log("Loading game...");
-                //Load();
-            }
-        }
 
 
         public void AddSaveHandler(ISaveAndLoad saveHandler)
@@ -3932,7 +3954,7 @@ namespace Assets._Project.Scripts.SaveAndLoad
             {
                 instance = default;
             }
-
+            //if (instanceId.ToString() == "372362971286935501") Debug.Log(isScenePlaced);
             return isScenePlaced;
         }
 

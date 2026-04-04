@@ -7,7 +7,9 @@ using System.Collections.Generic;
 using System.Linq;
 using Theblueway.Core;
 using Theblueway.Core.Runtime.Packages.com.blueutils.core.Runtime.ScriptResources;
+using UnityEditor;
 using UnityEngine;
+using static PlasticGui.WorkspaceWindow.Merge.MergeInProgress;
 
 namespace Theblueway.SaveAndLoad.Packages.com.theblueway.saveandload.Runtime.InfraScripts
 {
@@ -79,18 +81,27 @@ namespace Theblueway.SaveAndLoad.Packages.com.theblueway.saveandload.Runtime.Inf
                         var scope = new ChildInfraScope { childInfra = goInfra, scopeId = RandomId.New };
                         _scenePlacedRootInfraScopes.Add(scope);
                     }
+
+                    SetUpGOInfrasInHierarchy(goInfra.gameObject);
                 }
+
+                Debug.Log("Successfully collected scene placed GOInfras.");
             }
         }
 #endif
 
 
 
+#if UNITY_EDITOR
+
         public void ValidateState()
         {
             if (_triggerValidate)
             {
                 _triggerValidate = false;
+
+                Debug.Log("SceneInfra validation started",gameObject);
+
 
                 if (_scopeId.IsDefault) _scopeId = RandomId.New;
 
@@ -123,7 +134,7 @@ namespace Theblueway.SaveAndLoad.Packages.com.theblueway.saveandload.Runtime.Inf
                         _LogNullGOInfraInScope(scope);
                     }
 
-                    if(scope.childInfra.transform.parent != null)
+                    if (scope.childInfra.transform.parent != null)
                     {
                         isValid = false;
 
@@ -138,8 +149,11 @@ namespace Theblueway.SaveAndLoad.Packages.com.theblueway.saveandload.Runtime.Inf
                         _scenePlacedRootInfraScopes.RemoveAt(i);
                     }
                 }
+
+                Debug.Log("SceneInfra validation finished", gameObject);
             }
-        }
+        } 
+#endif
 
 
 
@@ -287,7 +301,21 @@ namespace Theblueway.SaveAndLoad.Packages.com.theblueway.saveandload.Runtime.Inf
 
 
 
+
 #if UNITY_EDITOR
+
+        internal void SetUpGOInfrasInHierarchy(GameObject root)
+        {
+            var selfAndChildren = root.GetComponentsInChildren<GOInfra>(includeInactive: true);
+
+            foreach (var goInfra in selfAndChildren)
+            {
+                goInfra._IsScenePlaced = true;
+                EditorUtility.SetDirty(goInfra);
+            }
+        }
+
+
 
         public void AddRootInfra_Editor(GOInfra infra)
         {

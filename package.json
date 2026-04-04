@@ -1,13 +1,14 @@
 {
-    "name": "com.blueutils.saveandload",
-    "version": "1.1.1",
+    "name": "com.theblueway.saveandload",
+    "version": "1.1.2",
     "displayName": "Blue SaveAndLoad",
     "dependencies": {
         "com.unity.nuget.newtonsoft-json": "3.2.1",
         "com.unity.addressables": "2.2.2",
-        "com.blueutils.core": "1.1.0",
-        "com.blueutils.codegen": "1.1.0",
-        "com.blueutils.addressables": "1.1.0",
+        "com.theblueway.core": "1.1.0",
+        "com.theblueway.codegen": "1.1.0",
+        "com.theblueway.typebinding": "1.1.1",
+        "com.theblueway.tools": "1.0.0",
 		"com.eflatun.scenereference": "https://github.com/starikcetin/Eflatun.SceneReference.git#4.1.1"
     }
 }

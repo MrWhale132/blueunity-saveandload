@@ -61,6 +61,7 @@ namespace Assets._Project.Scripts.SaveAndLoad.SaveHandlerBases
 
 
         public virtual ObjectMetaData MetaData { get => throw new NotSupportedException("we shouldnt got here"); }
+        public virtual SaveDataBase SaveData => throw new NotSupportedException("we shouldnt got here");
         public long SaveHandlerId { get; set; }
         public Type _handledType;
         public Type HandledType { get => __isHandledTypeStatic ? StaticHandlerOf : _handledType; set => _handledType = value; }
@@ -166,9 +167,8 @@ namespace Assets._Project.Scripts.SaveAndLoad.SaveHandlerBases
         {
         }
 
-        public virtual string Serialize()
+        public virtual void ArrangeSaveDataForSerialization()
         {
-            throw new System.NotImplementedException();
         }
 
         public virtual void Deserialize(string json)

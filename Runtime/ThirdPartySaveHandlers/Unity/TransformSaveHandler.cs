@@ -61,14 +61,6 @@ namespace Assets._Project.Scripts.SaveAndLoad.ThirdPartySaveHandlers
 
             __instance = go.transform;
         }
-
-
-
-
-        public override string Serialize()
-        {
-            return JsonConvert.SerializeObject(__saveData, Formatting.None);
-        }
     }
 
 

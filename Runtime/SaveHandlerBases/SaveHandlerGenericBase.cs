@@ -19,6 +19,7 @@ namespace Assets._Project.Scripts.SaveAndLoad.SaveHandlerBases
 
 
         public override ObjectMetaData MetaData => __saveData._MetaData_;
+        public override SaveDataBase SaveData => __saveData;
         public override int Order { get => __saveData._MetaData_.Order; set => __saveData._MetaData_.Order = value; }
 
 
@@ -109,10 +110,7 @@ namespace Assets._Project.Scripts.SaveAndLoad.SaveHandlerBases
             __saveData = (TSaveData)data;
         }
 
-        public override string Serialize()
-        {
-            return JsonConvert.SerializeObject(__saveData);
-        }
+
 
         public override void Deserialize(string json)
         {

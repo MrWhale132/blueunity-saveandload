@@ -73,6 +73,7 @@ namespace Assets._Project.Scripts.Infrastructure
         }
 
 
+
         private void Start()
         {
             RegisterSingleton(SceneManagement);
@@ -1498,31 +1499,6 @@ namespace Assets._Project.Scripts.Infrastructure
             }
 
 
-            //todo: this wont work with streaming data
-            //public override void CreateObject()
-            //{
-            //    if (Infra.SceneManagement != null)
-            //    {
-            //        Infra.Singleton.Unregister(Infra.SceneManagement);
-            //        //Infra.SceneManagement = null;
-            //    }
-
-            //    base.CreateObject();
-
-            //    //Infra.SceneManagement = __instance;
-            //}
-
-            //public override void _AssignInstance()
-            //{
-            //    __instance = Infra.SceneManagement;
-            //}
-
-            public override void ReleaseObject()
-            {
-                Debug.Log("released");
-                base.ReleaseObject();
-            }
-
             public override void LoadPhase1()
             {
                 base.LoadPhase1();
@@ -1530,12 +1506,6 @@ namespace Assets._Project.Scripts.Infrastructure
                 __instance._savedSceneInfos = GetObjectById<List<SceneInfo>>(__saveData._loadedSceneInfos);
                 __instance._activeSceneInstanceIdFromSaveFile = __saveData.ActiveSceneInstanceIdFromSaveFile;
             }
-
-            //public override void _SetObjectId()
-            //{
-            //    HandledObjectId = SaveAndLoadManager.Singleton.GetOrCreateSingletonObjectIdBySaveHandlerId(SaveHandlerId);
-            //    Infra.Singleton.RegisterReference(__instance, HandledObjectId, rootObject: true);
-            //}
         }
 
         public class SceneManagementSaveData : SaveDataBase

@@ -1,15 +1,15 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using UnityEditor;
 using UnityEngine;
-
+using Assets._Project.Scripts.UtilScripts.Extensions;
 
 
 [InitializeOnLoad]
 public static class CodegenWatcher
 {
-    private static FileSystemWatcher watcher;
-    private static DateTime lastEventTime;
+    private static List<FileSystemWatcher> watchers;
 
     static CodegenWatcher()
     {
@@ -19,64 +19,55 @@ public static class CodegenWatcher
 
     private static void EnsureWatcher()
     {
-        if (watcher != null) return;
+        if (watchers != null) return;
 
-        // Watch your Scripts folder (change as needed)
-        string path = Path.Combine(Application.dataPath/*, "Scripts"*/);
-        if (!Directory.Exists(path)) return;
-
-        watcher = new FileSystemWatcher(path, "*.cs")
+        List<string> paths = new List<string>
         {
-            IncludeSubdirectories = true,
-            EnableRaisingEvents = true,
-            NotifyFilter = NotifyFilters.LastWrite | NotifyFilters.FileName
+            Path.Combine(Application.dataPath),
+            Path.Combine(Application.dataPath,"..","Packages"),
         };
 
-        watcher.Changed += (s, e) => SaveAndLoadCodeGenWindow._eventQueue.Enqueue(e.ToDto()); ;
-        watcher.Created += (s, e) => SaveAndLoadCodeGenWindow._eventQueue.Enqueue(e.ToDto()); ;
-        watcher.Deleted += (s, e) => SaveAndLoadCodeGenWindow._eventQueue.Enqueue(e.ToDto()); ;
-        //watcher.Renamed += OnRenamed;
+        watchers = new();
+
+
+        foreach (var path in paths)
+        {
+            if (!Directory.Exists(path)) return;
+
+            var watcher = new FileSystemWatcher(path, "*.cs")
+            {
+                IncludeSubdirectories = true,
+                EnableRaisingEvents = true,
+                NotifyFilter = NotifyFilters.LastWrite | NotifyFilters.FileName
+            };
+
+            watcher.Changed += (s, e) => SaveAndLoadCodeGenWindow._eventQueue.Enqueue(e.ToDto()); ;
+            watcher.Created += (s, e) => SaveAndLoadCodeGenWindow._eventQueue.Enqueue(e.ToDto()); ;
+            watcher.Deleted += (s, e) => SaveAndLoadCodeGenWindow._eventQueue.Enqueue(e.ToDto()); ;
+
+            watchers.Add(watcher);
+        }
 
         //Debug.Log("[CodegenWatcher] Watching " + path);
     }
 
 
-    private static void OnChanged(object sender, FileSystemEventArgs e)
-    {
-        // Debounce rapid events
-        //if ((DateTime.Now - lastEventTime).TotalMilliseconds < 200)
-        //{
-        //Debug.LogError($"[CodegenWatcher] Duplicate event: {e.ChangeType}: {e.FullPath}");
-            
-        //    return;
-        //}
-
-        lastEventTime = DateTime.Now;
-
-        // Run your codegen logic
-        //Debug.Log($"[CodegenWatcher] {e.ChangeType}: {e.FullPath}");
-
-
-    }
-
-    private static void OnRenamed(object sender, RenamedEventArgs e)
-    {
-        Debug.Log($"[CodegenWatcher] Renamed: {e.OldFullPath} -> {e.FullPath}");
-        RunCodegen(e.FullPath);
-    }
-
-    private static void RunCodegen(string changedFile)
-    {
-    }
 
     private static void DisposeWatcher()
     {
-        if (watcher != null)
+        if (watchers.IsNotNullAndNotEmpty())
         {
-            watcher.EnableRaisingEvents = false;
-            watcher.Dispose();
-            watcher = null;
-            //Debug.Log("[CodegenWatcher] Disposed");
+            foreach (var watcher in watchers)
+            {
+                if (watcher != null)
+                {
+                    watcher.EnableRaisingEvents = false;
+                    watcher.Dispose();
+                    //Debug.Log("[CodegenWatcher] Disposed");
+                }
+            }
+
+            watchers = null;
         }
     }
 }

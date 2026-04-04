@@ -15,11 +15,12 @@ namespace Assets._Project.Scripts.SaveAndLoad
         public Type HandledType { get; }
         public int Order { get; set; }
         public bool IsValid { get; }
+        public SaveDataBase SaveData { get; }
         public void Accept(SaveDataBase data);
         public void ReleaseObject();
         //save
         public void WriteSaveData();
-        public string Serialize();
+        public void ArrangeSaveDataForSerialization();
         //load
         public void Deserialize(string json);
         public void CreateObject();

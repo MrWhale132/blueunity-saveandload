@@ -27,17 +27,9 @@ namespace Assets._Project.Scripts.SaveAndLoad.SaveHandlerBases
 
             HandledObjectId = __saveData._ObjectId_;
 
+            _AssignInstance();
 
-            //if (__saveData.IsFromPrefabAsset)
-            //{
-            //    //__instance = Infra.Singleton.GetObjectById<TSavable>(__saveData._ObjectId_);
-            //}
-            //else
-            {
-                _AssignInstance();
-
-                Infra.Singleton.RegisterReference(__instance, __saveData._ObjectId_, rootObject: __saveData._isRootObject_);
-            }
+            Infra.Singleton.RegisterReference(__instance, __saveData._ObjectId_, rootObject: __saveData._isRootObject_);
         }
 
         public override void _AssignInstance()

@@ -53,6 +53,7 @@ namespace DevTest
             __saveData.enabled = __instance.enabled;
             __saveData.hideFlags = __instance.hideFlags;
             __saveData.isPlaying = __instance.isPlaying;
+            __saveData.pitch = __instance.pitch;
         }
 
         public override void LoadPhase1()
@@ -71,6 +72,7 @@ namespace DevTest
 #if UNITY_EDITOR
             __instance.gamepadSpeakerOutputType = __saveData.gamepadSpeakerOutputType;
 #endif
+            __instance.pitch = __saveData.pitch;
             __instance.loop = __saveData.loop;
             __instance.ignoreListenerVolume = __saveData.ignoreListenerVolume;
             __instance.playOnAwake = __saveData.playOnAwake;
@@ -200,6 +202,7 @@ namespace DevTest
     public class AudioSourceSaveData : MonoSaveDataBase
     {
         public System.Single volume;
+        public System.Single pitch;
         public System.Single time;
         public System.Int32 timeSamples;
         public RandomId resource;

@@ -53,13 +53,13 @@ namespace Assets._Project.Scripts.SaveAndLoad.SaveHandlerBases
 
                 if (_goInfra == null)
                 {
-                    message = $"GOSaveHandler: It was detected that a gameobject instance might be a prefab asset and not an instance of it \n" +
+                    message = $"GOSaveHandler: It was detected that a gameobject instance might be a prefab asset and not an instance of it " +
                         $"but it does not have a {nameof(GOInfra)} that could tell which prefab this GameObject is.\n" +
                         $"ObjectId: {HandledObjectId}, name: {__instance.name}";
                 }
                 else if (_goInfra.PrefabAssetId.IsDefault)
                 {
-                    message = $"GOSaveHandler: It was detected that a gameobject instance might be a prefab asset and not an instance of it \n" +
+                    message = $"GOSaveHandler: It was detected that a gameobject instance might be a prefab asset and not an instance of it " +
                         $"but it does not have a prefab asset id that could tell which prefab this GameObject is.\n" +
                         $"ObjectId: {HandledObjectId}, name: {__instance.name}";
                 }

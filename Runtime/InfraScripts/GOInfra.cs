@@ -52,7 +52,7 @@ namespace Assets._Project.Scripts.Infrastructure
         [ReadOnly]
         public bool _IsRootObject;
 
-        [ReadOnly]
+        //[ReadOnly]
         public bool _IsScenePlaced;
 
 
@@ -146,7 +146,7 @@ namespace Assets._Project.Scripts.Infrastructure
                     DescribeAndRegisterPrefab();
                 }
 
-                bool isManaged = HasInlinedPrefabParts || HasInlinedSceneParts;
+                bool isManaged = IsPrefabRoot || _IsScenePlaced;
 
                 if (!isManaged)
                 {
@@ -169,8 +169,11 @@ namespace Assets._Project.Scripts.Infrastructure
         public void SetupUnmanagedInstance()
         {
             var goId = Infra.Singleton.Register(gameObject, rootObject: true, createSaveHandler: true);
-
-            _registeredInstanceIdsOfAuthoredObjects.Add(goId);
+            
+            _registeredInstanceIdsOfAuthoredObjects = new()
+            {
+                goId
+            };
 
 
             List<Component> components = new List<Component>();
@@ -204,7 +207,10 @@ namespace Assets._Project.Scripts.Infrastructure
         public void OnDestroy()
         {
             if (ReturnEarly) return;
-            RemoveFromSceneInfraIfNeeded();
+
+#if UNITY_EDITOR
+            RemoveFromSceneInfraIfNeeded_Editor(); 
+#endif
             Unregister();
         }
 
@@ -234,7 +240,7 @@ namespace Assets._Project.Scripts.Infrastructure
 
 #if UNITY_EDITOR
 
-        public void RemoveFromSceneInfraIfNeeded()
+        public void RemoveFromSceneInfraIfNeeded_Editor()
         {
             if (!Application.isPlaying && gameObject.transform.parent == null && SceneInfra.HasSceneInfra(gameObject, out var sceneInfra))
             {
@@ -776,7 +782,6 @@ namespace Assets._Project.Scripts.Infrastructure
             EditorValidationService.RequestValidation(this);
 
             _IsRootObject = IsRootInfraCached;
-            _IsScenePlaced = IsScenePlaced;
         }
 
 
@@ -825,11 +830,19 @@ namespace Assets._Project.Scripts.Infrastructure
 
         private void Reset()
         {
+#if UNITY_EDITOR
+
             if (gameObject.transform.parent == null && SceneInfra.HasSceneInfra(gameObject, out var sceneInfra))
             {
                 sceneInfra.AddRootInfra_Editor(this);
             }
+#endif
         }
+
+
+
+
+
 
 
 

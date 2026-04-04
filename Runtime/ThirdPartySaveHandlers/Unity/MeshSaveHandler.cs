@@ -221,16 +221,16 @@ namespace Assets._Project.Scripts.SaveAndLoad.ThirdPartySaveHandlers.UnitySHs
         }
 
 
-        public override string Serialize()
+        public override void ArrangeSaveDataForSerialization()
         {
+            base.ArrangeSaveDataForSerialization();
+
             CompressBuffer(__saveData._vertices, __saveData.vertices, BinaryPacking.Vector3PackSize);
             CompressBuffer(__saveData._indices, __saveData.indices, sizeof(int));
             CompressBuffer(__saveData._normals, __saveData.normals, BinaryPacking.Vector3PackSize);
             CompressBuffer(__saveData._tangents, __saveData.tangents, BinaryPacking.Vector4PackSize);
             CompressBuffer(__saveData._colors, __saveData.colors, BinaryPacking.ColorPackSize);
             CompressBuffer(__saveData._uvs, __saveData.uvs, BinaryPacking.Vector2PackSize);
-
-            return Newtonsoft.Json.JsonConvert.SerializeObject(__saveData, Newtonsoft.Json.Formatting.None);
         }
 
 
@@ -717,7 +717,6 @@ namespace Assets._Project.Scripts.SaveAndLoad.ThirdPartySaveHandlers.UnitySHs
         public List<int> indexSizes = new();
         [NonSerialized, JsonIgnore] public PooledArray<Vector3> _vertices;
         [NonSerialized, JsonIgnore] public PooledArray<int> _indices;
-        [NonSerialized, JsonIgnore] public int[] _triangles;
         [NonSerialized, JsonIgnore] public PooledArray<Vector3> _normals;
         [NonSerialized, JsonIgnore] public PooledArray<Vector4> _tangents;
         [NonSerialized, JsonIgnore] public PooledArray<Color> _colors;

@@ -48,7 +48,7 @@ namespace Assets._Project.Scripts.SaveAndLoad.SaveHandlerBases
                 AssetIdMap.ObjectIdToAssetId.Add(HandledObjectId, __saveData._AssetId_);
                 return;
             }
-            
+
 
             if (!SupportsInstanceCreation)
                 Debug.LogError((HandledType?.Name, __instance?.name, HandledObjectId, _context == null,
@@ -78,12 +78,12 @@ namespace Assets._Project.Scripts.SaveAndLoad.SaveHandlerBases
 
             HandledObjectId = __saveData._ObjectId_;
 
-                _AssignInstance();
+            _AssignInstance();
 
-                Infra.Singleton.RegisterReference(__instance, HandledObjectId, rootObject: __saveData._isRootObject_);
+            Infra.Singleton.RegisterReference(__instance, HandledObjectId, rootObject: __saveData._isRootObject_);
 
-                if (__saveData._AssetId_.IsNotDefault)
-                    AssetIdMap.ObjectIdToAssetId.Add(HandledObjectId, __saveData._AssetId_);
+            if (__saveData._AssetId_.IsNotDefault)
+                AssetIdMap.ObjectIdToAssetId.Add(HandledObjectId, __saveData._AssetId_);
         }
 
 
@@ -95,7 +95,7 @@ namespace Assets._Project.Scripts.SaveAndLoad.SaveHandlerBases
                 return;
             }
 
-            if(__saveData._AssetId_.IsNotDefault)
+            if (__saveData._AssetId_.IsNotDefault)
             {
                 var assetId = __saveData._AssetId_;
 
@@ -103,9 +103,13 @@ namespace Assets._Project.Scripts.SaveAndLoad.SaveHandlerBases
 
                 if (orig != null)
                 {
-                    var copy = Object.Instantiate(orig);
+                    if (IsReadable(orig))
+                    {
+                        var copy = Object.Instantiate(orig);
 
-                    __instance = copy;
+                        __instance = copy;
+                    }
+                    else __instance = orig;
                 }
                 else
                 {
@@ -133,6 +137,18 @@ namespace Assets._Project.Scripts.SaveAndLoad.SaveHandlerBases
             base.ReleaseObject();
         }
 
+
+
+
+        public static bool IsReadable(Object asset)
+        {
+            if (asset is Texture2D tex)
+            {
+                return tex.isReadable;
+            }
+
+            return true;
+        }
 
 
         ///todo: this is temp solution because I dont want to mark every tpye of asset savehandler just to override their <see cref="_AssignInstance"/>
@@ -185,7 +201,7 @@ namespace Assets._Project.Scripts.SaveAndLoad.SaveHandlerBases
 
         public static bool IsMutable(RandomId id)
         {
-            if(mutable.TryGetValue(id, out var isMutable)) return isMutable;
+            if (mutable.TryGetValue(id, out var isMutable)) return isMutable;
             else return false;
         }
 
@@ -219,11 +235,11 @@ namespace Assets._Project.Scripts.SaveAndLoad.SaveHandlerBases
             //null isntance is allowed
 
 
-            if(ObjectIdToAssetInstance.TryGetValue(objectId, out var alreadyRegisteredAssetInstance))
+            if (ObjectIdToAssetInstance.TryGetValue(objectId, out var alreadyRegisteredAssetInstance))
             {
                 var comparer = MyReferenceEqualityComparer.Instance;
 
-                if(!comparer.Equals(instance, alreadyRegisteredAssetInstance)
+                if (!comparer.Equals(instance, alreadyRegisteredAssetInstance)
                     || comparer.GetHashCode(instance) != comparer.GetHashCode(alreadyRegisteredAssetInstance))
                 {
                     Debug.LogError($"ERROR {nameof(AssetIdMap)}: Can not add instance with id: {objectId} because an other instance has already been " +

@@ -1,17 +1,15 @@
 {
-    "name": "SaveAndLoad",
+    "name": "Theblueway.SaveAndLoad",
     "rootNamespace": "Theblueway.SaveAndLoad.Runtime",
     "references": [
         "GUID:11f9f0384cd82b14ea5d004a22a3f210",
         "GUID:868b241af02c2d64d888ee6d2df251d9",
-        "GUID:e5502f6ef6571ba4ea9fd935ff8c576d",
-        "GUID:688ce7ba18e5e88488c6bee6dc5bc567",
+        "GUID:caca889fed6088d40b22c2d7e2909c31",
         "GUID:84651a3751eca9349aac36a66bba901b",
         "GUID:6055be8ebefd69e48b49212b09b47b2f",
         "GUID:69448af7b92c7f342b298e06a37122aa",
         "GUID:9e24947de15b9834991c9d8411ea37cf",
         "GUID:8c4dd21966739024fbd72155091d199e",
-        "GUID:caca889fed6088d40b22c2d7e2909c31",
         "GUID:d8b63aba1907145bea998dd612889d6b",
         "GUID:75469ad4d38634e559750d17036d5f7c"
     ],

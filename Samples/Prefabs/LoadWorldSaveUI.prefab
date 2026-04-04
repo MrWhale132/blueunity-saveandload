@@ -146,7 +146,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 1914191453201269594}
-  - component: {fileID: -4298840816927820713}
+  - component: {fileID: 4645543008131199465}
   m_Layer: 5
   m_Name: LoadWorldSaveUI
   m_TagString: Untagged
@@ -176,7 +176,7 @@ RectTransform:
   m_AnchoredPosition: {x: 0, y: 0}
   m_SizeDelta: {x: 1646.8243, y: 1087.0685}
   m_Pivot: {x: 0.5, y: 0.5}
---- !u!114 &-4298840816927820713
+--- !u!114 &4645543008131199465
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -185,18 +185,9 @@ MonoBehaviour:
   m_GameObject: {fileID: 3305164135321850748}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 021023d96fd25f942965b63672915e0e, type: 3}
+  m_Script: {fileID: 11500000, guid: 9e967f3c7bf71524bbc1acb6730b070e, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  _worldScene:
-    asset: {fileID: 102900000, guid: 7d48af2f9c7c14840abfc5e21827efaa, type: 3}
-    guid: 7d48af2f9c7c14840abfc5e21827efaa
-  _mainMenuScene:
-    asset: {fileID: 102900000, guid: ed942d92338e7f34d9dbd711132452fd, type: 3}
-    guid: ed942d92338e7f34d9dbd711132452fd
-  _tempScene:
-    asset: {fileID: 102900000, guid: bbe196310e4787b46b48638c4bba4c91, type: 3}
-    guid: bbe196310e4787b46b48638c4bba4c91
   _createNewWorldButton: {fileID: 8849070188881859109}
   _worldElementPrefab: {fileID: 5310881844038088627, guid: 78245c900c655e34bb4ae71e32248577, type: 3}
   _worldListContainer: {fileID: 976052375743422295}
