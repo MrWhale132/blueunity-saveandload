@@ -9,7 +9,7 @@ MonoBehaviour:
   m_GameObject: {fileID: 0}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 6ccfe14941b8fe7428073de499e7e892, type: 3}
+  m_Script: {fileID: 11500000, guid: 7a6af31bcacf1b244858322a6a7ad462, type: 3}
   m_Name: Paths
   m_EditorClassIdentifier: 
   _worldSavePath: saves/worlds
